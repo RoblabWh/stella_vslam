@@ -18,6 +18,8 @@
 #include "stella_vslam/feature/orb_extractor.h"
 #include "stella_vslam/io/trajectory_io.h"
 #include "stella_vslam/io/map_database_io_factory.h"
+#include "stella_vslam/io/point_cloud_io_factory.h"
+#include "stella_vslam/io/keyframe_io_factory.h"
 #include "stella_vslam/publish/map_publisher.h"
 #include "stella_vslam/publish/frame_publisher.h"
 #include "stella_vslam/util/converter.h"
@@ -60,6 +62,14 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     // map I/O
     auto map_format = system_params["map_format"].as<std::string>("msgpack");
     map_database_io_ = io::map_database_io_factory::create(map_format);
+
+    // point cloud I/O
+    auto point_cloud_format = system_params["point_cloud_format"].as<std::string>("ply");
+    point_cloud_io_ = io::point_cloud_io_factory::create(point_cloud_format);
+
+    // point cloud I/O
+    auto keyframe_format = system_params["keyframe_format"].as<std::string>("png");
+    keyframe_io_ = io::keyframe_io_factory::create(keyframe_format);
 
     // tracking module
     tracker_ = new tracking_module(cfg_, camera_, map_db_, bow_vocab_, bow_db_);
@@ -225,6 +235,22 @@ bool system::save_map_database(const std::string& path) const {
     pause_other_threads();
     spdlog::debug("save_map_database: {}", path);
     bool ok = map_database_io_->save(path, cam_db_, orb_params_db_, map_db_);
+    resume_other_threads();
+    return ok;
+}
+
+bool system::save_point_cloud(const std::string& path) const {
+    pause_other_threads();
+    spdlog::debug("save_point_cloud: {}", path);
+    bool ok = point_cloud_io_->save(path, map_db_);
+    resume_other_threads();
+    return ok;
+}
+
+bool system::save_keyframes(const std::string& path) const {
+    pause_other_threads();
+    spdlog::debug("save_keyframes: {}", path);
+    bool ok = keyframe_io_->save(path, map_db_);
     resume_other_threads();
     return ok;
 }

@@ -49,6 +49,8 @@ class frame_publisher;
 
 namespace io {
 class map_database_io_base;
+class point_cloud_io_base;
+class keyframe_io_base;
 }
 
 class system {
@@ -85,6 +87,12 @@ public:
 
     //! Save the map database to file
     bool save_map_database(const std::string& path) const;
+
+    //! Save the point cloud to file
+    bool save_point_cloud(const std::string& path) const;
+
+    //! Save the keyrames to file
+    bool save_keyframes(const std::string& path) const;
 
     //! Get the map publisher
     const std::shared_ptr<publish::map_publisher> get_map_publisher() const;
@@ -260,6 +268,12 @@ private:
 
     //! map I/O
     std::shared_ptr<io::map_database_io_base> map_database_io_ = nullptr;
+
+    //! point cloud I/O
+    std::shared_ptr<io::point_cloud_io_base> point_cloud_io_ = nullptr;
+
+    //! keyframe I/O
+    std::shared_ptr<io::keyframe_io_base> keyframe_io_ = nullptr;
 
     //! system running status flag
     std::atomic<bool> system_is_running_{false};
