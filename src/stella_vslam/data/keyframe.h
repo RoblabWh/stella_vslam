@@ -51,7 +51,8 @@ public:
     keyframe(const unsigned int id,
              const double timestamp, const Mat44_t& pose_cw, camera::base* camera,
              const feature::orb_params* orb_params, const frame_observation& frm_obs,
-             const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec);
+             const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec,
+             const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask);
     virtual ~keyframe();
 
     // Factory method for create keyframe
@@ -60,7 +61,8 @@ public:
         const unsigned int id,
         const double timestamp, const Mat44_t& pose_cw, camera::base* camera,
         const feature::orb_params* orb_params, const frame_observation& frm_obs,
-        const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec);
+        const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec,
+        const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask);
     static std::shared_ptr<keyframe> from_stmt(sqlite3_stmt* stmt,
                                                camera_database* cam_db,
                                                orb_params_database* orb_params_db,
@@ -278,6 +280,15 @@ public:
 
     //! graph node
     std::unique_ptr<graph_node> graph_node_ = nullptr;
+
+    //! image
+    cv::Mat img_;
+
+    //! image
+    cv::Mat depth_;
+
+    //! mask
+    cv::Mat mask_;
 
 private:
     //-----------------------------------------

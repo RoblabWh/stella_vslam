@@ -8,6 +8,13 @@
 namespace stella_vslam {
 namespace util {
 
+void resize(cv::Mat& img, int rows, int cols);
+void resize(cv::Mat& img, const cv::Size size);
+void resize(const cv::Mat& in, cv::Mat &out, int rows, int cols);
+void resize(const cv::Mat& in, cv::Mat &out, const cv::Size size);
+
+void convert_to_bgr(cv::Mat& img, const camera::color_order_t in_color_order);
+
 void convert_to_grayscale(cv::Mat& img, const camera::color_order_t in_color_order);
 
 void convert_to_true_depth(cv::Mat& img, const double depthmap_factor);

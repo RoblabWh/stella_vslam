@@ -5,6 +5,58 @@
 namespace stella_vslam {
 namespace util {
 
+void resize(cv::Mat& img, int rows, int cols) {
+    resize(img, img, rows, cols);
+}
+
+void resize(cv::Mat& img, const cv::Size size) {
+    resize(img, img, size);
+}
+
+void resize(const cv::Mat& in, cv::Mat &out, int rows, int cols) {
+    resize(in, out, cv::Size(cols, rows));
+}
+
+void resize(const cv::Mat& in, cv::Mat &out, const cv::Size size) {
+    if (!in.empty()) {
+        cv::resize(in, out, size);
+    }
+}
+
+void convert_to_bgr(cv::Mat& img, const camera::color_order_t in_color_order) {
+    if (img.channels() == 3) {
+        switch (in_color_order) {
+            case camera::color_order_t::BGR: {
+                break;
+            }
+            case camera::color_order_t::RGB: {
+                cv::cvtColor(img, img, cv::COLOR_RGB2BGR);
+                break;
+            }
+            case camera::color_order_t::Gray: {
+                cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
+                break;
+            }
+        }
+    }
+    else if (img.channels() == 4) {
+        switch (in_color_order) {
+            case camera::color_order_t::BGR: {
+                cv::cvtColor(img, img, cv::COLOR_BGRA2BGR);
+                break;
+            }
+            case camera::color_order_t::RGB: {
+                cv::cvtColor(img, img, cv::COLOR_RGBA2BGR);
+                break;
+            }
+            case camera::color_order_t::Gray: {
+                cv::cvtColor(img, img, cv::COLOR_GRAY2BGR);
+                break;
+            }
+        }
+    }
+}
+
 void convert_to_grayscale(cv::Mat& img, const camera::color_order_t in_color_order) {
     if (img.channels() == 3) {
         switch (in_color_order) {

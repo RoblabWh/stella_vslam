@@ -3,6 +3,7 @@
 #include "stella_vslam/tracking_module.h"
 #include "stella_vslam/mapping_module.h"
 #include "stella_vslam/global_optimization_module.h"
+#include "stella_vslam/dense_module.h"
 #include "stella_vslam/camera/camera_factory.h"
 #include "stella_vslam/data/camera_database.h"
 #include "stella_vslam/data/common.h"
@@ -66,6 +67,8 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     mapper_ = new mapping_module(cfg_->yaml_node_["Mapping"], map_db_, bow_db_, bow_vocab_);
     // global optimization module
     global_optimizer_ = new global_optimization_module(map_db_, bow_db_, bow_vocab_, cfg_->yaml_node_, camera_->setup_type_ != camera::setup_type_t::Monocular);
+    // dense module
+    dense_ = new dense_module(cfg_->yaml_node_, camera_, map_db_);
 
     // preprocessing modules
     const auto preprocessing_params = util::yaml_optional_ref(cfg->yaml_node_, "Preprocessing");
@@ -96,8 +99,10 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     // connect modules each other
     tracker_->set_mapping_module(mapper_);
     tracker_->set_global_optimization_module(global_optimizer_);
+    tracker_->set_dense_module(dense_);
     mapper_->set_tracking_module(tracker_);
     mapper_->set_global_optimization_module(global_optimizer_);
+    mapper_->set_dense_module(dense_);
     global_optimizer_->set_tracking_module(tracker_);
     global_optimizer_->set_mapping_module(mapper_);
 }
@@ -113,6 +118,10 @@ system::~system() {
 
     delete tracker_;
     tracker_ = nullptr;
+
+    dense_thread_.reset(nullptr);
+    delete dense_;
+    dense_ = nullptr;
 
     delete bow_db_;
     bow_db_ = nullptr;
@@ -169,18 +178,22 @@ void system::startup(const bool need_initialize) {
 
     mapping_thread_ = std::unique_ptr<std::thread>(new std::thread(&stella_vslam::mapping_module::run, mapper_));
     global_optimization_thread_ = std::unique_ptr<std::thread>(new std::thread(&stella_vslam::global_optimization_module::run, global_optimizer_));
+    dense_thread_ = std::unique_ptr<std::thread>(new std::thread(&stella_vslam::dense_module::run, dense_));
 }
 
 void system::shutdown() {
     // terminate the other threads
     auto future_mapper_terminate = mapper_->async_terminate();
     auto future_global_optimizer_terminate = global_optimizer_->async_terminate();
+    auto future_dense_terminate = dense_->async_terminate();
     future_mapper_terminate.get();
     future_global_optimizer_terminate.get();
+    future_dense_terminate.get();
 
     // wait until the threads stop
     mapping_thread_->join();
     global_optimization_thread_->join();
+    dense_thread_->join();
 
     spdlog::info("shutdown SLAM system");
     system_is_running_ = false;
@@ -311,7 +324,7 @@ data::frame system::create_monocular_frame(const cv::Mat& img, const double time
         marker_detector_->detect(img_gray, markers_2d);
     }
 
-    return data::frame(timestamp, camera_, orb_params_, frm_obs, std::move(markers_2d));
+    return data::frame(timestamp, camera_, orb_params_, frm_obs, std::move(markers_2d), img, mask);
 }
 
 data::frame system::create_stereo_frame(const cv::Mat& left_img, const cv::Mat& right_img, const double timestamp, const cv::Mat& mask) {
@@ -370,7 +383,7 @@ data::frame system::create_stereo_frame(const cv::Mat& left_img, const cv::Mat& 
         marker_detector_->detect(img_gray, markers_2d);
     }
 
-    return data::frame(timestamp, camera_, orb_params_, frm_obs, std::move(markers_2d));
+    return data::frame(timestamp, camera_, orb_params_, frm_obs, std::move(markers_2d), left_img, mask);
 }
 
 data::frame system::create_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp, const cv::Mat& mask) {
@@ -433,7 +446,7 @@ data::frame system::create_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& dep
         marker_detector_->detect(img_gray, markers_2d);
     }
 
-    return data::frame(timestamp, camera_, orb_params_, frm_obs, std::move(markers_2d));
+    return data::frame(timestamp, camera_, orb_params_, frm_obs, std::move(markers_2d), rgb_img, mask);
 }
 
 std::shared_ptr<Mat44_t> system::feed_monocular_frame(const cv::Mat& img, const double timestamp, const cv::Mat& mask) {
@@ -572,6 +585,15 @@ void system::pause_other_threads() const {
             }
         }
     }
+    // pause the dense module
+    if (dense_ && !dense_->is_terminated()) {
+        auto future_pause = dense_->async_pause();
+        while (future_pause.wait_for(std::chrono::milliseconds(5)) == std::future_status::timeout) {
+            if (dense_->is_terminated()) {
+                break;
+            }
+        }
+    }
 }
 
 void system::resume_other_threads() const {
@@ -582,6 +604,10 @@ void system::resume_other_threads() const {
     // resume the mapping module
     if (mapper_) {
         mapper_->resume();
+    }
+    // resume the dense module
+    if (dense_) {
+        dense_->resume();
     }
 }
 

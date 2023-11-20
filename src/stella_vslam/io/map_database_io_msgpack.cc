@@ -26,14 +26,17 @@ bool map_database_io_msgpack::save(const std::string& path,
     const auto orb_params = orb_params_db->to_json();
     nlohmann::json keyfrms;
     nlohmann::json landmarks;
-    map_db->to_json(keyfrms, landmarks);
+    nlohmann::json dense_points;
+    map_db->to_json(keyfrms, landmarks, dense_points);
 
     nlohmann::json json{{"cameras", cameras},
                         {"orb_params", orb_params},
                         {"keyframes", keyfrms},
                         {"landmarks", landmarks},
+                        {"dense_points", dense_points},
                         {"keyframe_next_id", static_cast<unsigned int>(map_db->next_keyframe_id_)},
-                        {"landmark_next_id", static_cast<unsigned int>(map_db->next_landmark_id_)}};
+                        {"landmark_next_id", static_cast<unsigned int>(map_db->next_landmark_id_)},
+                        {"dense_point_next_id", static_cast<unsigned int>(map_db->next_dense_point_id_)}};
 
     std::ofstream ofs(path, std::ios::out | std::ios::binary);
 
@@ -90,10 +93,12 @@ bool map_database_io_msgpack::load(const std::string& path,
     orb_params_db->from_json(json_orb_params);
     const auto json_keyfrms = json.at("keyframes");
     const auto json_landmarks = json.at("landmarks");
-    map_db->from_json(cam_db, orb_params_db, bow_vocab, json_keyfrms, json_landmarks);
+    const auto json_dense_points = json.at("dense_points");
+    map_db->from_json(cam_db, orb_params_db, bow_vocab, json_keyfrms, json_landmarks, json_dense_points);
     // load next ID
     map_db->next_keyframe_id_ += json.at("keyframe_next_id").get<unsigned int>();
     map_db->next_landmark_id_ += json.at("landmark_next_id").get<unsigned int>();
+    map_db->next_dense_point_id_ += json.at("dense_point_next_id").get<unsigned int>();
 
     // update bow database
     const auto keyfrms = map_db->get_all_keyframes();

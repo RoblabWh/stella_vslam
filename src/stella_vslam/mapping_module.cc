@@ -2,6 +2,7 @@
 #include "stella_vslam/mapping_module.h"
 #include "stella_vslam/tracking_module.h"
 #include "stella_vslam/global_optimization_module.h"
+#include "stella_vslam/dense_module.h"
 #include "stella_vslam/data/keyframe.h"
 #include "stella_vslam/data/landmark.h"
 #include "stella_vslam/data/map_database.h"
@@ -59,6 +60,10 @@ void mapping_module::set_global_optimization_module(global_optimization_module* 
     global_optimizer_ = global_optimizer;
 }
 
+void mapping_module::set_dense_module(dense_module* dense) {
+    dense_ = dense;
+}
+
 void mapping_module::run() {
     spdlog::info("start mapping module");
 
@@ -112,6 +117,8 @@ void mapping_module::run() {
         if (!cur_keyfrm_->graph_node_->is_spanning_root()) {
             global_optimizer_->queue_keyframe(cur_keyfrm_);
         }
+        // send the new keyframe to the dense module
+        dense_->async_add_keyframe(cur_keyfrm_);
     }
 
     spdlog::info("terminate mapping module");

@@ -7,6 +7,7 @@ target_sources(${PROJECT_NAME}
                ${CMAKE_CURRENT_SOURCE_DIR}/frame_observation.h
                ${CMAKE_CURRENT_SOURCE_DIR}/keyframe.h
                ${CMAKE_CURRENT_SOURCE_DIR}/landmark.h
+               ${CMAKE_CURRENT_SOURCE_DIR}/dense_point.h
                ${CMAKE_CURRENT_SOURCE_DIR}/marker.h
                ${CMAKE_CURRENT_SOURCE_DIR}/marker2d.h
                ${CMAKE_CURRENT_SOURCE_DIR}/graph_node.h
@@ -20,6 +21,7 @@ target_sources(${PROJECT_NAME}
                ${CMAKE_CURRENT_SOURCE_DIR}/frame.cc
                ${CMAKE_CURRENT_SOURCE_DIR}/keyframe.cc
                ${CMAKE_CURRENT_SOURCE_DIR}/landmark.cc
+               ${CMAKE_CURRENT_SOURCE_DIR}/dense_point.cc
                ${CMAKE_CURRENT_SOURCE_DIR}/marker.cc
                ${CMAKE_CURRENT_SOURCE_DIR}/marker2d.cc
                ${CMAKE_CURRENT_SOURCE_DIR}/graph_node.cc

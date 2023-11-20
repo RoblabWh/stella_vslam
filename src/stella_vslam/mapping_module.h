@@ -19,6 +19,7 @@ namespace stella_vslam {
 class config;
 class tracking_module;
 class global_optimization_module;
+class dense_module;
 
 namespace camera {
 class base;
@@ -43,6 +44,9 @@ public:
 
     //! Set the global optimization module
     void set_global_optimization_module(global_optimization_module* global_optimizer);
+
+    //! Set the dense module
+    void set_dense_module(dense_module* dense);
 
     //-----------------------------------------
     // main process
@@ -194,6 +198,8 @@ private:
     tracking_module* tracker_ = nullptr;
     //! global optimization module
     global_optimization_module* global_optimizer_ = nullptr;
+    //! dense module
+    dense_module* dense_ = nullptr;
 
     //! local map cleaner
     std::unique_ptr<module::local_map_cleaner> local_map_cleaner_ = nullptr;

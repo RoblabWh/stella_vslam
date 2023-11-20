@@ -15,9 +15,10 @@ namespace data {
 std::atomic<unsigned int> frame::next_id_{0};
 
 frame::frame(const double timestamp, camera::base* camera, feature::orb_params* orb_params,
-             const frame_observation frm_obs, const std::unordered_map<unsigned int, marker2d>& markers_2d)
+             const frame_observation frm_obs, const std::unordered_map<unsigned int, marker2d>& markers_2d,
+             const cv::Mat& img, const cv::Mat& mask)
     : id_(next_id_++), timestamp_(timestamp), camera_(camera), orb_params_(orb_params), frm_obs_(frm_obs),
-      markers_2d_(markers_2d),
+      markers_2d_(markers_2d), img_(img), mask_(mask),
       // Initialize association with 3D points
       landmarks_(std::vector<std::shared_ptr<landmark>>(frm_obs_.num_keypts_, nullptr)) {}
 

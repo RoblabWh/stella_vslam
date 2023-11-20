@@ -19,6 +19,7 @@ class config;
 class tracking_module;
 class mapping_module;
 class global_optimization_module;
+class dense_module;
 
 namespace camera {
 class base;
@@ -235,6 +236,11 @@ private:
     global_optimization_module* global_optimizer_ = nullptr;
     //! global optimization thread
     std::unique_ptr<std::thread> global_optimization_thread_ = nullptr;
+
+    //! dense module
+    dense_module* dense_ = nullptr;
+    //! dense thread
+    std::unique_ptr<std::thread> dense_thread_ = nullptr;
 
     // ORB extractors
     //! ORB extractor for left/monocular image

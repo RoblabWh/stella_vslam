@@ -3,6 +3,7 @@
 #include "stella_vslam/data/frame.h"
 #include "stella_vslam/data/keyframe.h"
 #include "stella_vslam/data/landmark.h"
+#include "stella_vslam/data/dense_point.h"
 #include "stella_vslam/data/marker.h"
 #include "stella_vslam/data/camera_database.h"
 #include "stella_vslam/data/orb_params_database.h"
@@ -12,8 +13,10 @@
 #include "stella_vslam/util/sqlite3.h"
 
 #include <spdlog/spdlog.h>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <sqlite3.h>
+#include <opencv2/imgcodecs.hpp>
 
 namespace stella_vslam {
 namespace data {
@@ -75,6 +78,24 @@ std::shared_ptr<landmark> map_database::get_landmark(unsigned int id) const {
         return nullptr;
     }
     return landmarks_.at(id);
+}
+
+void map_database::add_dense_point(std::shared_ptr<dense_point>& point, unsigned int id) {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    dense_points_[id] = point;
+}
+
+void map_database::erase_dense_point(unsigned int id) {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    dense_points_.erase(id);
+}
+
+std::shared_ptr<dense_point> map_database::get_dense_point(unsigned int id) const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    if (!dense_points_.count(id)) {
+        return nullptr;
+    }
+    return dense_points_.at(id);
 }
 
 void map_database::add_marker(const std::shared_ptr<marker>& mkr) {
@@ -205,6 +226,16 @@ std::vector<std::shared_ptr<landmark>> map_database::get_all_landmarks() const {
     return landmarks;
 }
 
+std::vector<std::shared_ptr<dense_point>> map_database::get_all_dense_points() const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    std::vector<std::shared_ptr<dense_point>> dense_points;
+    dense_points.reserve(dense_points_.size());
+    for (const auto& id_point : dense_points_) {
+      dense_points.push_back(id_point.second);
+    }
+    return dense_points;
+}
+
 std::shared_ptr<keyframe> map_database::get_last_inserted_keyframe() const {
     std::lock_guard<std::mutex> lock(mtx_map_access_);
     return last_inserted_keyfrm_;
@@ -230,6 +261,11 @@ unsigned int map_database::get_num_landmarks() const {
     return landmarks_.size();
 }
 
+unsigned int map_database::get_num_dense_points() const {
+    std::lock_guard<std::mutex> lock(mtx_map_access_);
+    return dense_points_.size();
+}
+
 unsigned int map_database::get_min_num_shared_lms() const {
     return min_num_shared_lms_;
 }
@@ -242,18 +278,20 @@ void map_database::clear() {
     last_inserted_keyfrm_ = nullptr;
     local_landmarks_.clear();
     spanning_roots_.clear();
+    dense_points_.clear();
 
     frm_stats_.clear();
 
     next_keyframe_id_ = 0;
     next_landmark_id_ = 0;
+    next_dense_point_id_ = 0;
     fixed_keyframe_id_threshold_ = 0;
 
     spdlog::info("clear map database");
 }
 
 void map_database::from_json(camera_database* cam_db, orb_params_database* orb_params_db, bow_vocabulary* bow_vocab,
-                             const nlohmann::json& json_keyfrms, const nlohmann::json& json_landmarks) {
+                             const nlohmann::json& json_keyfrms, const nlohmann::json& json_landmarks, const nlohmann::json& json_dense_points) {
     std::lock_guard<std::mutex> lock(mtx_map_access_);
 
     // When loading the map, leave last_inserted_keyfrm_ as nullptr.
@@ -282,6 +320,18 @@ void map_database::from_json(camera_database* cam_db, orb_params_database* orb_p
         const auto json_landmark = json_id_landmark.value();
 
         register_landmark(landmark_id, json_landmark);
+    }
+
+    // Step 3.5. Register 3D dense point
+    // If the object does not exist at this step, the corresponding pointer is set as nullptr.
+    spdlog::info("decoding {} desne points to load", json_dense_points.size());
+    for (const auto& json_id_points : json_dense_points.items()) {
+        const auto point_id_in_storage = std::stoi(json_id_points.key());
+        assert(0 <= point_id_in_storage);
+        const auto point_id = point_id_in_storage + next_dense_point_id_;
+        const auto json_point = json_id_points.value();
+
+        register_dense_point(point_id, json_point);
     }
 
     // Step 4. Register graph information
@@ -398,9 +448,27 @@ void map_database::register_keyframe(camera_database* cam_db, orb_params_databas
     frame_observation frm_obs{num_keypts, descriptors, undist_keypts, bearings, stereo_x_right, depths, keypt_indices_in_cells};
     // Compute BoW
     data::bow_vocabulary_util::compute_bow(bow_vocab, descriptors, bow_vec, bow_feat_vec);
+
+    // Images
+    cv::Mat img;
+    auto json_img = json_keyfrm.at("image").get<std::vector<uint8_t>>();
+    if (!json_img.empty()) {
+        img = cv::imdecode(json_img, cv::IMREAD_COLOR);
+    }
+    cv::Mat depth;
+    auto json_depth = json_keyfrm.at("depth").get<std::vector<uint8_t>>();
+    if (!json_depth.empty()) {
+        depth = cv::imdecode(json_depth, cv::IMREAD_UNCHANGED);
+    }
+    cv::Mat mask;
+    auto json_mask = json_keyfrm.at("mask").get<std::vector<uint8_t>>();
+    if (!json_mask.empty()) {
+        mask = cv::imdecode(json_img, cv::IMREAD_GRAYSCALE);
+    }
+
     auto keyfrm = data::keyframe::make_keyframe(
         id, timestamp, pose_cw, camera, orb_params,
-        frm_obs, bow_vec, bow_feat_vec);
+        frm_obs, bow_vec, bow_feat_vec, img, depth, mask);
 
     // Append to map database
     assert(!keyframes_.count(id));
@@ -420,6 +488,18 @@ void map_database::register_landmark(const unsigned int id, const nlohmann::json
         num_visible, num_found);
     assert(!landmarks_.count(id));
     landmarks_[lm->id_] = lm;
+}
+
+void map_database::register_dense_point(const unsigned int id, const nlohmann::json& json_dense_point) {
+    const auto pos_w = Vec3_t(json_dense_point.at("pos_w").get<std::vector<Vec3_t::value_type>>().data());
+    const auto color = Color_t(json_dense_point.at("color").get<std::vector<Color_t::value_type>>().data());
+    const auto ref_keyfrm_id = json_dense_point.at("ref_keyfrm").get<int>() + next_keyframe_id_;
+    const auto ref_keyfrm = keyframes_.at(ref_keyfrm_id);
+
+    auto point = std::make_shared<data::dense_point>(
+        id, pos_w, color.reverse(), ref_keyfrm);
+    assert(!dense_points_.count(id));
+    dense_points_[point->id_] = point;
 }
 
 void map_database::register_graph(const unsigned int id, const nlohmann::json& json_keyfrm) {
@@ -464,7 +544,7 @@ void map_database::register_association(const unsigned int keyfrm_id, const nloh
     }
 }
 
-void map_database::to_json(nlohmann::json& json_keyfrms, nlohmann::json& json_landmarks) const {
+void map_database::to_json(nlohmann::json& json_keyfrms, nlohmann::json& json_landmarks, nlohmann::json& json_dense_points) const {
     std::lock_guard<std::mutex> lock(mtx_map_access_);
 
     // Save each keyframe as json
@@ -495,6 +575,19 @@ void map_database::to_json(nlohmann::json& json_keyfrms, nlohmann::json& json_la
         landmarks[std::to_string(id)] = lm->to_json();
     }
     json_landmarks = landmarks;
+
+    // Save each dense 3D point as json
+    spdlog::info("encoding {} dense points to store", dense_points_.size());
+    std::map<std::string, nlohmann::json> dense_points;
+    for (const auto& id_point : dense_points_) {
+      const auto id = id_point.first;
+      const auto& point = id_point.second;
+      assert(point);
+      assert(id == point->id_);
+      assert(!dense_points.count(std::to_string(id)));
+      dense_points[std::to_string(id)] = point->to_json();
+    }
+    json_dense_points = dense_points;
 }
 
 bool map_database::from_db(sqlite3* db,

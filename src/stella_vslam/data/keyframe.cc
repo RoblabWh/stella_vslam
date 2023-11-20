@@ -13,6 +13,7 @@
 
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <opencv2/imgcodecs.hpp>
 
 namespace stella_vslam {
 namespace data {
@@ -22,6 +23,7 @@ keyframe::keyframe(unsigned int id, const frame& frm)
       camera_(frm.camera_), orb_params_(frm.orb_params_),
       frm_obs_(frm.frm_obs_), markers_2d_(frm.markers_2d_),
       bow_vec_(frm.bow_vec_), bow_feat_vec_(frm.bow_feat_vec_),
+      img_(frm.img_), depth_(cv::Mat()), mask_(frm.mask_),
       landmarks_(frm.get_landmarks()) {
     // set pose parameters (pose_wc_, trans_wc_) using frm.pose_cw_
     set_pose_cw(frm.get_pose_cw());
@@ -30,12 +32,14 @@ keyframe::keyframe(unsigned int id, const frame& frm)
 keyframe::keyframe(const unsigned int id, const double timestamp,
                    const Mat44_t& pose_cw, camera::base* camera,
                    const feature::orb_params* orb_params, const frame_observation& frm_obs,
-                   const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec)
+                   const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec,
+                   const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask)
     : id_(id),
       timestamp_(timestamp), camera_(camera),
       orb_params_(orb_params), frm_obs_(frm_obs),
       bow_vec_(bow_vec), bow_feat_vec_(bow_feat_vec),
-      landmarks_(std::vector<std::shared_ptr<landmark>>(frm_obs_.num_keypts_, nullptr)) {
+      landmarks_(std::vector<std::shared_ptr<landmark>>(frm_obs_.num_keypts_, nullptr)),
+      img_(img), depth_(depth), mask_(mask) {
     // set pose parameters (pose_wc_, trans_wc_) using pose_cw_
     set_pose_cw(pose_cw);
 
@@ -62,12 +66,14 @@ std::shared_ptr<keyframe> keyframe::make_keyframe(
     const unsigned int id, const double timestamp,
     const Mat44_t& pose_cw, camera::base* camera,
     const feature::orb_params* orb_params, const frame_observation& frm_obs,
-    const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec) {
+    const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec,
+    const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask) {
     auto ptr = std::allocate_shared<keyframe>(
         Eigen::aligned_allocator<keyframe>(),
         id, timestamp,
         pose_cw, camera, orb_params,
-        frm_obs, bow_vec, bow_feat_vec);
+        frm_obs, bow_vec, bow_feat_vec,
+        img, depth, mask);
     // covisibility graph node (connections is not assigned yet)
     ptr->graph_node_ = stella_vslam::make_unique<graph_node>(ptr);
     return ptr;
@@ -142,7 +148,7 @@ std::shared_ptr<keyframe> keyframe::from_stmt(sqlite3_stmt* stmt,
     data::bow_vocabulary_util::compute_bow(bow_vocab, descriptors, bow_vec, bow_feat_vec);
     auto keyfrm = data::keyframe::make_keyframe(
         id + next_keyframe_id, timestamp, pose_cw, camera, orb_params,
-        frm_obs, bow_vec, bow_feat_vec);
+        frm_obs, bow_vec, bow_feat_vec, cv::Mat(), cv::Mat(), cv::Mat());
     return keyfrm;
 }
 
@@ -173,6 +179,20 @@ nlohmann::json keyframe::to_json() const {
         loop_edge_ids.push_back(loop_edge->id_);
     }
 
+    // compress images
+    std::vector<uint8_t> img;
+    if (!img_.empty()) {
+        cv::imencode(".png", img_, img);
+    }
+    std::vector<uint8_t> depth;
+    if (!depth_.empty()) {
+        cv::imencode(".png", depth_, depth);
+    }
+    std::vector<uint8_t> mask;
+    if (!mask_.empty()) {
+        cv::imencode(".png", mask_, mask);
+    }
+
     return {{"ts", timestamp_},
             {"cam", camera_->name_},
             {"orb_params", orb_params_->name_},
@@ -189,7 +209,11 @@ nlohmann::json keyframe::to_json() const {
             // graph information
             {"span_parent", spanning_parent ? spanning_parent->id_ : -1},
             {"span_children", spanning_child_ids},
-            {"loop_edges", loop_edge_ids}};
+            {"loop_edges", loop_edge_ids},
+            // images
+            {"image", img},
+            {"depth", depth},
+            {"mask", mask}};
 }
 
 bool keyframe::bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const {

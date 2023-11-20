@@ -20,6 +20,7 @@ namespace stella_vslam {
 class system;
 class mapping_module;
 class global_optimization_module;
+class dense_module;
 
 namespace data {
 class map_database;
@@ -57,6 +58,9 @@ public:
 
     //! Set the global optimization module
     void set_global_optimization_module(global_optimization_module* global_optimizer);
+
+    //! Set the dense module
+    void set_dense_module(dense_module* dense);
 
     //-----------------------------------------
     // interfaces for mapping module and global optimization module
@@ -194,6 +198,8 @@ protected:
     mapping_module* mapper_ = nullptr;
     //! global optimization module
     global_optimization_module* global_optimizer_ = nullptr;
+    //! dense module
+    dense_module* dense_ = nullptr;
 
     //! map_database
     data::map_database* map_db_ = nullptr;

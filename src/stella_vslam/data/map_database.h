@@ -24,6 +24,7 @@ namespace data {
 class frame;
 class keyframe;
 class landmark;
+class dense_point;
 class marker;
 class camera_database;
 class orb_params_database;
@@ -86,6 +87,24 @@ public:
      * @param id
      */
     std::shared_ptr<landmark> get_landmark(unsigned int id) const;
+
+    /**
+     * Add dense point to the database
+     * @param lm
+     */
+    void add_dense_point(std::shared_ptr<dense_point>& point, unsigned int id);
+
+    /**
+     * Erase dense point from the database
+     * @param id
+     */
+    void erase_dense_point(unsigned int id);
+
+    /**
+     * Get dense point from the database
+     * @param id
+     */
+    std::shared_ptr<dense_point> get_dense_point(unsigned int id) const;
 
     /**
      * Add marker to the database
@@ -155,6 +174,12 @@ public:
     std::vector<std::shared_ptr<landmark>> get_all_landmarks() const;
 
     /**
+     * Get all of the dense points in the database
+     * @return
+     */
+    std::vector<std::shared_ptr<dense_point>> get_all_dense_points() const;
+
+    /**
      * Get the last keyframe added to the database
      * @return shared pointer to the last keyframe added to the database
      */
@@ -193,6 +218,12 @@ public:
      * @return
      */
     unsigned int get_num_landmarks() const;
+
+    /**
+     * Get the number of dense points
+     * @return
+     */
+    unsigned int get_num_dense_points() const;
 
     /**
      * Get minimum threshold for covisibility graph connection
@@ -235,22 +266,24 @@ public:
     void clear();
 
     /**
-     * Load keyframes and landmarks from JSON
+     * Load keyframes, landmarks and dense points from JSON
      * @param cam_db
      * @param orb_params_db
      * @param bow_vocab
      * @param json_keyfrms
      * @param json_landmarks
+     * @param json_dense_points
      */
     void from_json(camera_database* cam_db, orb_params_database* orb_params_db, bow_vocabulary* bow_vocab,
-                   const nlohmann::json& json_keyfrms, const nlohmann::json& json_landmarks);
+                   const nlohmann::json& json_keyfrms, const nlohmann::json& json_landmarks, const nlohmann::json& json_dense_points);
 
     /**
-     * Dump keyframes and landmarks as JSON
+     * Dump keyframes, landmarks and dense points as JSON
      * @param json_keyfrms
      * @param json_landmarks
+     * @param json_dense_points
      */
-    void to_json(nlohmann::json& json_keyfrms, nlohmann::json& json_landmarks) const;
+    void to_json(nlohmann::json& json_keyfrms, nlohmann::json& json_landmarks, nlohmann::json& json_dense_points) const;
 
     /**
      * Load keyframes and landmarks from database
@@ -272,6 +305,7 @@ public:
     //! next ID
     std::atomic<unsigned int> next_keyframe_id_{0};
     std::atomic<unsigned int> next_landmark_id_{0};
+    std::atomic<unsigned int> next_dense_point_id_{0};
 
 private:
     /**
@@ -293,6 +327,14 @@ private:
      * @param json_landmark
      */
     void register_landmark(const unsigned int id, const nlohmann::json& json_landmark);
+
+    /**
+     * Decode JSON and register dense point information to the map database
+     * (NOTE: objects which are not constructed yet will be set as nullptr)
+     * @param id
+     * @param json_dense_point
+     */
+    void register_dense_point(const unsigned int id, const nlohmann::json& json_dense_point);
 
     /**
      * Decode JSON and register essential graph information
@@ -345,6 +387,8 @@ private:
     std::unordered_map<unsigned int, std::shared_ptr<landmark>> landmarks_;
     //! IDs and markers
     std::unordered_map<unsigned int, std::shared_ptr<marker>> markers_;
+    //! IDs and dense points
+    std::unordered_map<unsigned int, std::shared_ptr<dense_point>> dense_points_;
 
     //! spanning roots
     std::vector<std::shared_ptr<keyframe>> spanning_roots_;

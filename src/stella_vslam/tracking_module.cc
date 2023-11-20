@@ -3,6 +3,7 @@
 #include "stella_vslam/tracking_module.h"
 #include "stella_vslam/mapping_module.h"
 #include "stella_vslam/global_optimization_module.h"
+#include "stella_vslam/dense_module.h"
 #include "stella_vslam/camera/base.h"
 #include "stella_vslam/data/landmark.h"
 #include "stella_vslam/data/map_database.h"
@@ -49,6 +50,10 @@ void tracking_module::set_mapping_module(mapping_module* mapper) {
 
 void tracking_module::set_global_optimization_module(global_optimization_module* global_optimizer) {
     global_optimizer_ = global_optimizer;
+}
+
+void tracking_module::set_dense_module(dense_module* dense) {
+    dense_ = dense;
 }
 
 bool tracking_module::request_relocalize_by_pose(const Mat44_t& pose_cw) {
@@ -99,8 +104,10 @@ void tracking_module::reset() {
 
     auto future_mapper_reset = mapper_->async_reset();
     auto future_global_optimizer_reset = global_optimizer_->async_reset();
+    auto future_dense_reset = dense_->async_reset();
     future_mapper_reset.get();
     future_global_optimizer_reset.get();
+    future_dense_reset.get();
 
     bow_db_->clear();
     map_db_->clear();

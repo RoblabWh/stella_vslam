@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM nvidia/cuda:12.0.1-devel-ubuntu22.04
 ENV DEBIAN_FRONTEND noninteractive
 
 # install dependencies via apt
@@ -212,12 +212,10 @@ RUN set -x && \
   rm -rf CMakeCache.txt CMakeFiles Makefile cmake_install.cmake example src && \
   chmod -R 777 ./*
 
-ARG SOCKET_PUBLISHER_COMMIT=e2aaf66b27a6477b478bc8e86992907f09f29188
 WORKDIR /tmp
 RUN set -x && \
-  git clone https://github.com/stella-cv/socket_publisher.git && \
+  git clone https://github.com/RoblabWh/socket_publisher.git && \
   cd socket_publisher && \
-  git checkout -q ${SOCKET_PUBLISHER_COMMIT} && \
   git submodule update --init --recursive && \
   mkdir -p build && \
   cd build && \
@@ -230,12 +228,10 @@ RUN set -x && \
   cd /tmp && \
   rm -rf *
 
-ARG EXAMPLES_COMMIT=1c0433867cba5d110fd94bbc609468650a2f7885
 WORKDIR /stella_vslam_examples
 RUN set -x && \
-  git clone https://github.com/stella-cv/stella_vslam_examples.git && \
+  git clone https://github.com/RoblabWh/stella_vslam_examples.git && \
   cd stella_vslam_examples && \
-  git checkout -q ${EXAMPLES_COMMIT} && \
   git submodule update --init --recursive && \
   mkdir -p build && \
   cd build && \

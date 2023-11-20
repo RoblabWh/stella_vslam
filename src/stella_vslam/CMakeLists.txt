@@ -26,6 +26,9 @@ find_package(g2o REQUIRED
              OPTIONAL_COMPONENTS
              g2o::csparse)
 
+# PatchMatchDense
+find_package(PatchMatchDense REQUIRED)
+
 # gtsam
 set(USE_GTSAM ON CACHE BOOL "Enable gtsam")
 unset(GTSAM_INCLUDE_DIRS CACHE)
@@ -81,11 +84,13 @@ add_library(${PROJECT_NAME}
             ${CMAKE_CURRENT_SOURCE_DIR}/tracking_module.h
             ${CMAKE_CURRENT_SOURCE_DIR}/mapping_module.h
             ${CMAKE_CURRENT_SOURCE_DIR}/global_optimization_module.h
+            ${CMAKE_CURRENT_SOURCE_DIR}/dense_module.h
             ${CMAKE_CURRENT_SOURCE_DIR}/config.cc
             ${CMAKE_CURRENT_SOURCE_DIR}/system.cc
             ${CMAKE_CURRENT_SOURCE_DIR}/tracking_module.cc
             ${CMAKE_CURRENT_SOURCE_DIR}/mapping_module.cc
-            ${CMAKE_CURRENT_SOURCE_DIR}/global_optimization_module.cc)
+            ${CMAKE_CURRENT_SOURCE_DIR}/global_optimization_module.cc
+            ${CMAKE_CURRENT_SOURCE_DIR}/dense_module.cc)
 
 # Set output directory of the library
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -209,6 +214,7 @@ target_link_libraries(${PROJECT_NAME}
                       ${CXSPARSE_LIBRARIES}
                       ${SUITESPARSE_LIBRARIES}
                       ${BoW_LIBRARY}
+                      PatchMatchDense
                       PRIVATE
                       ${LAPACK_LIBRARIES})
 
@@ -255,6 +261,6 @@ add_subdirectory(util)
 if (CMAKE_GENERATOR MATCHES "Visual Studio")
     get_target_property(SRC_FILES ${PROJECT_NAME} SOURCES)
 
-    # Preserve folder structure in Visual Studio 
+    # Preserve folder structure in Visual Studio
     source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SRC_FILES})
 endif()

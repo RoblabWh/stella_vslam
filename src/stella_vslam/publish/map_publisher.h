@@ -13,6 +13,7 @@ class config;
 namespace data {
 class keyframe;
 class landmark;
+class dense_point;
 class map_database;
 } // namespace data
 
@@ -63,6 +64,13 @@ public:
      */
     unsigned int get_landmarks(std::vector<std::shared_ptr<data::landmark>>& all_landmarks,
                                std::set<std::shared_ptr<data::landmark>>& local_landmarks);
+
+    /**
+     * Get all dense points
+     * @param all_dense_points
+     * @return number of dense points in map
+     */
+    unsigned int get_dense_points(std::vector<std::shared_ptr<data::dense_point>>& all_dense_points);
 
 private:
     //! config
