@@ -198,6 +198,22 @@ RUN set -x && \
   cd /tmp && \
   rm -rf *
 
+# PatchMatchDense
+WORKDIR /tmp
+RUN set -x && \
+  git clone https://github.com/RoblabWh/patch_match_dense.git && \
+  cd patch_match_dense && \
+  mkdir -p build && \
+  cd build && \
+  cmake \
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
+    .. && \
+  make -j${NUM_THREADS} && \
+  make install && \
+  cd /tmp && \
+  rm -rf *
+
 # stella_vslam
 COPY . /stella_vslam/
 WORKDIR /stella_vslam/
@@ -228,7 +244,7 @@ RUN set -x && \
   cd /tmp && \
   rm -rf *
 
-WORKDIR /stella_vslam_examples
+WORKDIR /
 RUN set -x && \
   git clone https://github.com/RoblabWh/stella_vslam_examples.git && \
   cd stella_vslam_examples && \
