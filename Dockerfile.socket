@@ -206,7 +206,7 @@ RUN set -x && \
   mkdir -p build && \
   cd build && \
   cmake \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
     .. && \
   make -j${NUM_THREADS} && \
@@ -221,7 +221,7 @@ RUN set -x && \
   mkdir -p build && \
   cd build && \
   cmake \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_BUILD_TYPE=Release \
     .. && \
   make -j${NUM_THREADS} && \
   make install && \
@@ -236,7 +236,7 @@ RUN set -x && \
   mkdir -p build && \
   cd build && \
   cmake \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
     .. && \
   make -j${NUM_THREADS} && \
@@ -252,7 +252,7 @@ RUN set -x && \
   mkdir -p build && \
   cd build && \
   cmake \
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+    -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} \
     -DUSE_STACK_TRACE_LOGGER=ON \
     .. && \
