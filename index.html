@@ -1,0 +1,172 @@
+
+
+<!DOCTYPE html>
+<html>
+
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+
+    <title>PatchMatch-Stereo-Panorama, a fast dense reconstruction from 360° video images</title>
+
+    <meta name="description" content="PatchMatch-Stereo-Panorama, a fast dense reconstruction from 360° video images">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <link rel="icon" href="img/favicon.png" type="image/png">
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.8.0/codemirror.min.css">
+    <link rel="stylesheet" href="css/app.css">
+
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.8.0/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/1.5.3/clipboard.min.js"></script>
+    
+    <script src="js/app.js"></script>
+</head>
+
+<body>
+    <div class="container" id="main">
+        <div class="row">
+            <h2 class="col-md-12 text-center">
+                <b>PatchMatch-Stereo-Panorama,</b><br>a fast dense reconstruction from 360° video images</br> 
+                <small>
+                SSRR 2022
+                </small>
+            </h2>
+        </div>
+        <div class="row">
+            <div class="col-md-12 text-center">
+                <img class="university-logo" src="img/favicon.png"/>Westphalian University of Applied Sciences Gelsenkirchen
+                <ul class="list-inline">
+                    <li>
+                        <a href="https://www.w-hs.de/service/informationen-zur-person/person/surmann/">
+                            Hartmut Surmann
+                        </a>
+                    </li>
+                    <li>
+                        <a href="">
+                            Marc Thurow
+                        </a>
+                    </li>
+                    <li>
+                        <a href="">
+                            Dominik Slomma
+                        </a>
+                    </li>
+                </ul>
+                <br>
+                
+            </div>
+        </div>
+
+        <div class="row">
+                <div class="col-md-4 col-md-offset-4 text-center">
+                    <ul class="nav nav-pills nav-justified">
+                        <li>
+                            <a href="https://ieeexplore.ieee.org/document/10018698">
+                            <image src="img/PatchMatch-Stereo-Panorama a fast dense reconstruction from 360 video images.png" height="60px">
+                                <h4><strong>Paper</strong></h4>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://www.youtube.com/watch?v=Y_ER_RcwZ8Y">
+                            <image src="img/youtube_icon.png" height="60px">
+                                <h4><strong>Video</strong></h4>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://www.youtube.com/watch?v=uNGSJdsfAYk">
+                            <image src="img/youtube_icon.png" height="60px">
+                                <h4><strong>Video</strong></h4>
+                            </a>
+                        </li>
+                        <!--<li>
+                            <a href="#" target="popup" onclick="window.open('#','popup','width=600,height=400')">
+                            <image src="img/database_icon.png" height="60px">
+                                <h4><strong>Dataset</strong></h4>
+                            </a>
+                        </li>-->
+                        <li>
+                            <a href="https://github.com/RoblabWh/PatchMatch">
+                            <image src="img/github.png" height="60px">
+                                <h4><strong>Code (OpenVSLAM)</strong></h4>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://github.com/RoblabWh/stella_vslam_dense">
+                            <image src="img/github.png" height="60px">
+                                <h4><strong>Code (StellaVSLAM)</strong></h4>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+        </div>
+
+
+
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <h3>
+                    Video
+                </h3>
+                <div class="text-center">
+                    <div style="position:relative;padding-top:56.25%;">
+                        <iframe src="https://youtube.com/embed/uNGSJdsfAYk" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <h3>Abstract</h3>
+                <p class="text-justify">
+                    This work proposes a new method for real-time dense 3d reconstruction for common 360° action cams, which can be mounted on small scouting UAVs during USAR missions. The proposed method extends a feature based Visual monocular SLAM (OpenVSLAM, based on the popular ORB-SLAM) for robust long-term localization on equirectangular video input by adding an additional densification thread that computes dense correspondences for any given keyframe with respect to a local keyframe-neighboorhood using a PatchMatch-Stereo-approach. While PatchMatch-Stereo-types of algorithms are considered state of the art for large scale Mutli-View-Stereo they had not been adapted so far for real-time dense 3d reconstruction tasks. This work describes a new massively parallel variant of the PatchMatch-Stereo-algorithm that differs from current approaches in two ways: First it supports the equirectangular camera model while other solutions are limited to the pinhole camera model. Second it is optimized for low latency while keeping a high level of completeness and accuracy. To achieve this it operates only on small sequences of keyframes, but employs techniques to compensate for the potential loss of accuracy due to the limited number of frames. Results demonstrate that dense 3d reconstruction is possible on a consumer grade laptop with a recent mobile GPU and that it is possible with improved accuracy and completeness over common offline-MVS solutions with comparable quality settings.
+                </p>
+            </div>
+        </div>
+  
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <h3>
+                    Citation
+                </h3>
+                <div class="form-group">
+                    <textarea id="bibtex" class="form-control" readonly>
+@INPROCEEDINGS{10018698,
+    author={Surmann, Hartmut and Thurow, Marc and Slomma, Dominik},
+    booktitle={2022 IEEE International Symposium on Safety, Security, and Rescue Robotics (SSRR)}, 
+    title={PatchMatch-Stereo-Panorama, a fast dense reconstruction from 360° video images}, 
+    year={2022},
+    volume={},
+    number={},
+    pages={366-372},
+    doi={10.1109/SSRR56537.2022.10018698}}
+                          
+                    </textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <h3>
+                    Acknowledgements
+                </h3>
+                <p class="text-justify">
+                    This work was founded by the Federal Ministry of Education and Research (BMBF) under grant number 13N14860
+                    (A-DRZ <a href="https://rettungsrobotik.de/">https://rettungsrobotik.de/</a>. Thanks to all of our partners in the A-DRZ project).                  
+                <br><br>
+                The website template was borrowed from <a href="http://mgharbi.com/">Michaël Gharbi</a>.
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
