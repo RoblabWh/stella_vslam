@@ -41,6 +41,14 @@ RUN set -x && \
     libyaml-cpp-dev \
     sqlite3 \
     libsqlite3-dev && \
+  : "python dependencies" && \
+  apt-get install -y -qq \
+    python3 \
+    python3-pip \
+    python3-msgpack \
+    python3-numpy \
+    python3-scipy \
+    python3-numba && \
   : "remove cache" && \
   apt-get autoremove -y -qq && \
   rm -rf /var/lib/apt/lists/*
@@ -125,7 +133,7 @@ RUN set -x && \
     -DBUILD_opencv_apps=OFF \
     -DBUILD_opencv_dnn=OFF \
     -DBUILD_opencv_ml=OFF \
-    -DBUILD_opencv_python_bindings_generator=OFF \
+    -DBUILD_opencv_python_bindings_generator=ON \
     -DENABLE_CXX11=ON \
     -DENABLE_FAST_MATH=ON \
     -DWITH_EIGEN=ON \
@@ -218,6 +226,7 @@ RUN set -x && \
 COPY . /stella_vslam/
 WORKDIR /stella_vslam/
 RUN set -x && \
+  cp -r example / && \
   mkdir -p build && \
   cd build && \
   cmake \

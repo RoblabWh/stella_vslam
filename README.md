@@ -1,3 +1,105 @@
+# stella_vslam_dense
+Innovate your UAV-based USAR missions with our real-time dense 3D reconstruction method tailored for common 360° action cams. Building upon StellaVSLAM and ORB-SLAM, our approach introduces a PatchMatch-Stereo thread for dense correspondences, extending robust long-term localization on equirectangular video input. This GitHub repository hosts our novel massively parallel variant of the PatchMatch-Stereo algorithm, optimized for low latency and supporting the equirectangular camera model. Experience improved accuracy and completeness on consumer-grade laptops with recent mobile GPUs, surpassing traditional offline Multi-View-Stereo solutions in real-time dense 3D reconstruction tasks.
+
+<b>Website:</b> https://roblabwh.github.io/stella_vslam_dense/ \
+<b>Original Paper:</b> [PatchMatch-Stereo-Panorama, a fast dense reconstruction from 360° video images](https://arxiv.org/abs/2211.16266)
+
+<img width="100%" src="demo.gif"/>
+
+## Limitations of Dense Feature
+- Only monocular equirectangular input is supported.
+- Only msgpack format is supported.
+- Visualization is limited to using socket_publisher exclusively.
+
+## Dependencies
+- Docker [(installation guide)](https://docs.docker.com/engine/install/)
+- Nvidia Docker [(installation guide)](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html)
+
+## Installation
+```
+git clone --recursive https://github.com/RoblabWh/stella_vslam_dense.git
+cd stella_vslam_dense
+docker build -t stella_vslam_dense -f Dockerfile.socket . --build-arg NUM_THREADS=$(nproc)
+```
+Currently, the only available option for visualizing dense point clouds is through the ```socket_publisher```, and this functionality can be utilized exclusively in conjunction with our enhanced ```socket_viewer```.
+```
+git clone https://github.com/RoblabWh/socket_viewer.git
+cd socket_viewer
+docker build -t stella_vslam_dense_viewer .
+```
+
+## Running
+Starting VSLAM container
+```
+docker run -it --rm --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 --net=host --name=stella_vslam_dense -v ${HOST_DATA_PATH:?}:/data stella_vslam_dense
+```
+Starting Viewer container
+```
+docker run --rm --net=host --name=stella_vslam_dense_viewer stella_vslam_dense_viewer
+```
+
+Run in container
+```
+./run_video_slam -v /data/orb_vocab.fbow -c "/data/${PATH_TO_CONFIG:?}" -m "/data/${PATH_TO_VIDEO:?}" --mask "/data/${PATH_TO_MASK:?}"
+```
+More options are available
+```
+./run_video_slam -h
+```
+
+## Running our example
+Starting VSLAM container
+```
+docker run -it --rm --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 --net=host --name=stella_vslam_dense stella_vslam_dense
+```
+Starting Viewer container
+```
+docker run --rm --net=host --name=stella_vslam_dense_viewer stella_vslam_dense_viewer
+```
+
+Run in VSLAM container
+```
+mkdir -p /data/example_inspection_flight_drz_keyframes
+
+curl -L "https://github.com/stella-cv/FBoW_orb_vocab/raw/main/orb_vocab.fbow" -o /data/orb_vocab.fbow
+
+curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/stella_vslam_dense/example_inspection_flight_drz.mp4" -o "/data/example_inspection_flight_drz.mp4"
+
+./run_video_slam -v /data/orb_vocab.fbow -c /example/dense/dense.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 3 -o /data/example_inspection_flight_drz.msg -p /data/example_inspection_flight_drz.ply -k /data/example_inspection_flight_drz_keyframes/
+```
+
+## Additional export scripts
+Exporting point cloud from msgpack to ply
+```
+/example/export_dense_msg_to_ply.py -i ${PATH_TO_MSGPACK:?} -o ${PATH_TO_PLY:?}
+```
+Exporting the project from msgpack for use with [nerfstudio](https://docs.nerf.studio/) or [instant-ngp](https://github.com/NVlabs/instant-ngp)
+```
+/example/export_dense_msg_to_nerf.py ${PATH_TO_MSGPACK:?} ${PATH_TO_VIDEO:?} ${PATH_TO_OUTPUT:?}
+```
+
+## Citation of original PatchMatch integration for OpenVSLAM
+```
+@INPROCEEDINGS{surmann2022,
+  author={Surmann, Hartmut and Thurow, Marc and Slomma, Dominik},
+  booktitle={2022 IEEE International Symposium on Safety, Security, and Rescue Robotics (SSRR)},
+  title={PatchMatch-Stereo-Panorama, a fast dense reconstruction from 360° video images},
+  year={2022},
+  volume={},
+  number={},
+  pages={366-372},
+  doi={10.1109/SSRR56537.2022.10018698}}
+```
+The paper can be found [here](https://arxiv.org/abs/2211.16266).\
+The code can be found [here](https://github.com/RoblabWh/PatchMatch).
+
+
+## Further reading
+<details>
+<summary>
+This part is from the original StellaVSLAM readme, which remains fully functional for non-dense operations. Notably, the documentation related to the configuration YAML file is entirely applicable. It's important to emphasize that when utilizing the dense feature, only the socket_publisher, msgpack format, and monocular equirectangular inputs are supported.
+</summary>
+
 # stella_vslam
 
 [![CI](https://github.com/stella-cv/stella_vslam/actions/workflows/main.yml/badge.svg)](https://github.com/stella-cv/stella_vslam/actions/workflows/main.yml)
@@ -140,3 +242,5 @@ The preprint can be found [here](https://arxiv.org/abs/1910.01122).
 - Mapillary AB. 2019. OpenSfM. <https://github.com/mapillary/OpenSfM>.
 - Giorgio Grisetti, Rainer Kümmerle, Cyrill Stachniss, and Wolfram Burgard. 2010. A Tutorial on Graph-Based SLAM. IEEE Transactions on Intelligent Transportation SystemsMagazine 2, 4 (2010), 31–43.
 - Rainer Kümmerle, Giorgio Grisetti, Hauke Strasdat, Kurt Konolige, and Wolfram Burgard. 2011. g2o: A general framework for graph optimization. In Proceedings of IEEE International Conference on Robotics and Automation (ICRA). 3607–3613.
+
+</details>
