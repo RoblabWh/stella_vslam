@@ -206,6 +206,18 @@ RUN set -x && \
   cd /tmp && \
   rm -rf *
 
+# socket_viewer
+WORKDIR /
+RUN set -x && \
+  apt-get update -y -qq && \
+  apt-get upgrade -y -qq --no-install-recommends && \
+  curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
+  apt-get install -y nodejs && \
+  git clone https://github.com/RoblabWh/socket_viewer.git && \
+  cd socket_viewer && \
+  npm install && \
+  rm -rf /var/lib/apt/lists/*
+
 # PatchMatchDense
 WORKDIR /tmp
 RUN set -x && \
@@ -226,7 +238,6 @@ RUN set -x && \
 COPY . /stella_vslam/
 WORKDIR /stella_vslam/
 RUN set -x && \
-  cp -r example / && \
   mkdir -p build && \
   cd build && \
   cmake \
@@ -268,4 +279,4 @@ RUN set -x && \
   make -j${NUM_THREADS}
 
 WORKDIR /stella_vslam_examples/build/
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/stella_vslam/entrypoint.socket.bash"]

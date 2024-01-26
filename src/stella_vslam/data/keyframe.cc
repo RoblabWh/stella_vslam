@@ -38,8 +38,8 @@ keyframe::keyframe(const unsigned int id, const double timestamp,
       timestamp_(timestamp), camera_(camera),
       orb_params_(orb_params), frm_obs_(frm_obs),
       bow_vec_(bow_vec), bow_feat_vec_(bow_feat_vec),
-      landmarks_(std::vector<std::shared_ptr<landmark>>(frm_obs_.num_keypts_, nullptr)),
-      img_(img), depth_(depth), mask_(mask) {
+      img_(img), depth_(depth), mask_(mask),
+      landmarks_(std::vector<std::shared_ptr<landmark>>(frm_obs_.num_keypts_, nullptr)) {
     // set pose parameters (pose_wc_, trans_wc_) using pose_cw_
     set_pose_cw(pose_cw);
 

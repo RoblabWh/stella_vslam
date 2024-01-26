@@ -21,24 +21,15 @@ git clone --recursive https://github.com/RoblabWh/stella_vslam_dense.git
 cd stella_vslam_dense
 docker build -t stella_vslam_dense -f Dockerfile.socket . --build-arg NUM_THREADS=$(nproc)
 ```
-Currently, the only available option for visualizing dense point clouds is through the ```socket_publisher```, and this functionality can be utilized exclusively in conjunction with our enhanced ```socket_viewer```.
-```
-git clone https://github.com/RoblabWh/socket_viewer.git
-cd socket_viewer
-docker build -t stella_vslam_dense_viewer .
-```
 
 ## Running
-Starting VSLAM container
+Start VSLAM container
 ```
-docker run -it --rm --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 --net=host --name=stella_vslam_dense -v ${HOST_DATA_PATH:?}:/data stella_vslam_dense
+docker run -it --rm --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 -p 3001:3001 --name=stella_vslam_dense -v ${HOST_DATA_PATH:?Set path to directory on the host system to keep input and output data.}:/data stella_vslam_dense
 ```
-Starting Viewer container
-```
-docker run --rm --net=host --name=stella_vslam_dense_viewer stella_vslam_dense_viewer
-```
+Open the viewer in a browser: http://localhost:3001
 
-Run in container
+Run VSLAM in container
 ```
 ./run_video_slam -v /data/orb_vocab.fbow -c "/data/${PATH_TO_CONFIG:?}" -m "/data/${PATH_TO_VIDEO:?}" --mask "/data/${PATH_TO_MASK:?}"
 ```
@@ -47,35 +38,47 @@ More options are available
 ./run_video_slam -h
 ```
 
-## Running our example
-Starting VSLAM container
+### Running our examples
+We present two illustrative examples to evaluate our method. The first utilizes a high-definition (HD) equirectangular video and boasts real-time processing capabilities. In contrast, the second example employs a 5.7k video, yielding a point cloud of higher quality. To execute the first example seamlessly, a computer equipped with 16GB of RAM and an NVIDIA graphics card is required. However, for the second example, a more robust system with 128GB of RAM (in addition to an NVIDIA graphics card) is necessary. While using swap space is an option, it significantly compromises performance speed.
+
+#### HD / Real time example
+Prepare dataset in container
 ```
-docker run -it --rm --gpus all --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 --net=host --name=stella_vslam_dense stella_vslam_dense
-```
-Starting Viewer container
-```
-docker run --rm --net=host --name=stella_vslam_dense_viewer stella_vslam_dense_viewer
+mkdir -p /data/example_inspection_flight_drz_keyframes_hd
+
+curl -L "https://github.com/stella-cv/FBoW_orb_vocab/raw/main/orb_vocab.fbow" -o /data/orb_vocab.fbow
+
+curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/stella_vslam_dense/example_inspection_flight_drz_hd.mp4" -o /data/example_inspection_flight_drz_hd.mp4
 ```
 
-Run in VSLAM container
+Run VSLAM in container
+```
+./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/dense/dense_hd.yaml -m /data/example_inspection_flight_drz_hd.mp4 --frame-skip 3 -o /data/example_inspection_flight_drz_hd.msg -p /data/example_inspection_flight_drz_hd.ply -k /data/example_inspection_flight_drz_keyframes_hd/
+```
+
+#### High quality example
+Prepare dataset in container
 ```
 mkdir -p /data/example_inspection_flight_drz_keyframes
 
 curl -L "https://github.com/stella-cv/FBoW_orb_vocab/raw/main/orb_vocab.fbow" -o /data/orb_vocab.fbow
 
-curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/stella_vslam_dense/example_inspection_flight_drz.mp4" -o "/data/example_inspection_flight_drz.mp4"
+curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/stella_vslam_dense/example_inspection_flight_drz.mp4" -o /data/example_inspection_flight_drz.mp4
+```
 
-./run_video_slam -v /data/orb_vocab.fbow -c /example/dense/dense.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 3 -o /data/example_inspection_flight_drz.msg -p /data/example_inspection_flight_drz.ply -k /data/example_inspection_flight_drz_keyframes/
+Run VSLAM in container
+```
+./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/dense/dense.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 3 -o /data/example_inspection_flight_drz.msg -p /data/example_inspection_flight_drz.ply -k /data/example_inspection_flight_drz_keyframes/
 ```
 
 ## Additional export scripts
 Exporting point cloud from msgpack to ply
 ```
-/example/export_dense_msg_to_ply.py -i ${PATH_TO_MSGPACK:?} -o ${PATH_TO_PLY:?}
+/stella_vslam/scripts/export_dense_msg_to_ply.py -i ${PATH_TO_MSGPACK:?} -o ${PATH_TO_PLY:?}
 ```
 Exporting the project from msgpack for use with [nerfstudio](https://docs.nerf.studio/) or [instant-ngp](https://github.com/NVlabs/instant-ngp)
 ```
-/example/export_dense_msg_to_nerf.py ${PATH_TO_MSGPACK:?} ${PATH_TO_VIDEO:?} ${PATH_TO_OUTPUT:?}
+/stella_vslam/scripts/export_dense_msg_to_nerf.py ${PATH_TO_MSGPACK:?} ${PATH_TO_VIDEO:?} ${PATH_TO_OUTPUT:?}
 ```
 
 ## Citation of original PatchMatch integration for OpenVSLAM

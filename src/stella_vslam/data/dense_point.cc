@@ -56,7 +56,7 @@ std::shared_ptr<keyframe> dense_point::get_ref_keyframe() const {
 nlohmann::json dense_point::to_json() const {
     return {{"pos_w", {pos_w_(0), pos_w_(1), pos_w_(2)}},
             {"color", {color_(2), color_(1), color_(0)}},
-            {"ref_keyfrm", ref_keyfrm_.lock()->id_}};
+            {"ref_keyfrm", ref_keyfrm_.expired() ? -1 : ref_keyfrm_.lock()->id_}};
 }
 
 } // namespace data
