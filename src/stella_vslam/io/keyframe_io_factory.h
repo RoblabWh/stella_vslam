@@ -2,8 +2,7 @@
 #define STELLA_VSLAM_IO_KEYFRAME_IO_FACTORY_H
 
 #include "stella_vslam/io/keyframe_io_base.h"
-#include "stella_vslam/io/keyframe_io_png.h"
-#include "stella_vslam/io/keyframe_io_jpg.h"
+#include "stella_vslam/io/keyframe_io_opencv.h"
 
 #include <string>
 
@@ -19,11 +18,8 @@ class keyframe_io_factory {
 public:
     static std::shared_ptr<keyframe_io_base> create(const std::string& keyframe_format) {
         std::shared_ptr<keyframe_io_base> keyframe_io;
-        if (keyframe_format == "png") {
-            keyframe_io = std::make_shared<io::keyframe_io_png>();
-        }
-        else if (keyframe_format == "jpg") {
-            keyframe_io = std::make_shared<io::keyframe_io_jpg>();
+        if (keyframe_format == "png" || keyframe_format == "jpg" || keyframe_format == "jpeg" || keyframe_format == "tiff") {
+            keyframe_io = std::make_shared<io::keyframe_io_opencv>(keyframe_format);
         }
         else {
             throw std::runtime_error("Invalid keyframe format: " + keyframe_format);
