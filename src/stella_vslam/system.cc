@@ -481,7 +481,45 @@ std::shared_ptr<Mat44_t> system::feed_monocular_frame(const cv::Mat& img, const 
         spdlog::warn("preprocess: empty image");
         return nullptr;
     }
-    return feed_frame(create_monocular_frame(img, timestamp, mask), img);
+    cv::Mat img_proc = img;
+    cv::Mat mask_proc = mask;
+    static bool log_img_resizing = true;
+    static bool log_mask_resizing = true;
+    // resize image
+    if (camera_->model_type_ == camera::model_type_t::Equirectangular) {
+        if (static_cast<unsigned int>(img.rows) != camera_->rows_
+            || static_cast<unsigned int>(img.cols) != camera_->cols_) {
+            if (static_cast<double>(img.cols) / static_cast<double>(img.rows)
+                != static_cast<double>(camera_->cols_) / static_cast<double>(camera_->rows_)) {
+                spdlog::warn("resizing input image to different aspect ratio");
+            }
+            else if (log_img_resizing) {
+                log_img_resizing = false;
+                spdlog::info("resizing input images");
+            }
+            else {
+                spdlog::trace("resizing input image");
+            }
+            util::resize(img, img_proc, camera_->rows_, camera_->cols_);
+        }
+        if (!mask.empty()
+            && (static_cast<unsigned int>(mask.rows) != camera_->rows_
+                || static_cast<unsigned int>(mask.cols) != camera_->cols_)) {
+            if (static_cast<double>(mask.cols) / static_cast<double>(mask.rows)
+                != static_cast<double>(camera_->cols_) / static_cast<double>(camera_->rows_)) {
+                spdlog::warn("resizing input mask to different aspect ratio");
+            }
+            else if (log_mask_resizing) {
+                log_mask_resizing = false;
+                spdlog::warn("resizing input masks");
+            }
+            else {
+                spdlog::trace("resizing input mask");
+            }
+            util::resize(mask, mask_proc, camera_->rows_, camera_->cols_);
+        }
+    }
+    return feed_frame(create_monocular_frame(img_proc, timestamp, mask_proc), img_proc);
 }
 
 std::shared_ptr<Mat44_t> system::feed_stereo_frame(const cv::Mat& left_img, const cv::Mat& right_img, const double timestamp, const cv::Mat& mask) {
