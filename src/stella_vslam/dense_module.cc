@@ -23,9 +23,16 @@ dense_module::dense_module(const YAML::Node& yaml_node, camera::base* camera, da
     spdlog::debug("CONSTRUCT: dense_module");
 
     const YAML::Node& local_yaml_node = util::yaml_optional_ref(yaml_node, "PatchMatch");
-    if (local_yaml_node["enabled"].as<bool>(false)) {
+    if (!local_yaml_node["enabled"].as<bool>(false)) {
+        is_paused_ = true;
+        spdlog::debug("patch match is disabled");
+    }
+    else if (camera->model_type_ != camera::model_type_t::Equirectangular) {
+        is_paused_ = true;
+        spdlog::warn("dense module with patch match is only supported with equirectangular cameras, disabling dense module");
+    }
+    else {
         spdlog::debug("load patch match parameters");
-
 
         std::shared_ptr<patch_match_config> pmd_cfg = std::make_shared<patch_match_config>();
         pmd_cfg->min_patch_standard_deviation = local_yaml_node["min_patch_std_dev"].as<float>(0);
@@ -54,10 +61,6 @@ dense_module::dense_module(const YAML::Node& yaml_node, camera::base* camera, da
             rows = ((double) cols / (double) camera->cols_) * camera->rows_;
         }
         depth_res_ = cv::Size(cols, rows);
-    }
-    else {
-        is_paused_ = true;
-        spdlog::debug("patch match is disabled");
     }
 }
 
