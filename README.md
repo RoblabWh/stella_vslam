@@ -71,14 +71,31 @@ Run VSLAM in container
 ./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/dense/dense.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 3 -o /data/example_inspection_flight_drz.msg -p /data/example_inspection_flight_drz.ply -k /data/example_inspection_flight_drz_keyframes/
 ```
 
+#### NeRF example
+Prepare dataset in container
+```
+curl -L "https://github.com/stella-cv/FBoW_orb_vocab/raw/main/orb_vocab.fbow" -o /data/orb_vocab.fbow
+
+curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/stella_vslam_dense/example_inspection_flight_drz.mp4" -o /data/example_inspection_flight_drz.mp4
+```
+
+Run VSLAM and export script in container
+```
+./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/nerf/nerf.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 10 -o /data/example_inspection_flight_drz_nerf.msg --no-sleep --auto-term --viewer none
+
+/stella_vslam/scripts/export_dense_msg_to_nerf.py /data/example_inspection_flight_drz_nerf.msg /data/example_inspection_flight_drz_nerf/
+```
+
+Run nerfstudio on the host or in another container
+
 ## Additional export scripts
 Exporting point cloud from msgpack to ply
 ```
 /stella_vslam/scripts/export_dense_msg_to_ply.py -i ${PATH_TO_MSGPACK:?} -o ${PATH_TO_PLY:?}
 ```
-Exporting the project from msgpack for use with [nerfstudio](https://docs.nerf.studio/) or [instant-ngp](https://github.com/NVlabs/instant-ngp)
+Exporting the project from msgpack for use with [nerfstudio](https://docs.nerf.studio/)
 ```
-/stella_vslam/scripts/export_dense_msg_to_nerf.py ${PATH_TO_MSGPACK:?} ${PATH_TO_VIDEO:?} ${PATH_TO_OUTPUT:?}
+/stella_vslam/scripts/export_dense_msg_to_nerf.py ${PATH_TO_MSGPACK:?} ${PATH_TO_OUTPUT:?}
 ```
 
 ## Citation of original PatchMatch integration for OpenVSLAM
