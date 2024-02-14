@@ -31,6 +31,23 @@ public:
 
     virtual ~dense_point();
 
+    // Factory method for create landmark
+    static std::shared_ptr<dense_point> from_stmt(sqlite3_stmt* stmt,
+                                               std::unordered_map<unsigned int, std::shared_ptr<stella_vslam::data::keyframe>>& keyframes,
+                                               unsigned int next_dense_point_id,
+                                               unsigned int next_keyframe_id);
+
+    /**
+     * Save this landmark information to db
+     */
+    static std::vector<std::pair<std::string, std::string>> columns() {
+        return std::vector<std::pair<std::string, std::string>>{
+            {"pos_w", "BLOB"},
+            {"color", "BLOB"},
+            {"ref_keyfrm", "INTEGER"}};
+    };
+    bool bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const;
+
     //! set world coordinates of this dense point
     void set_pos_in_world(const Vec3_t& pos_w);
     //! get world coordinates of this dense point

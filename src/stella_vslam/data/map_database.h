@@ -360,8 +360,10 @@ private:
     bool load_landmarks_from_db(sqlite3* db, const std::string& table_name);
     void load_association_from_stmt(sqlite3_stmt* stmt);
     bool load_associations_from_db(sqlite3* db, const std::string& table_name);
+    bool load_dense_points_from_db(sqlite3* db, const std::string& table_name);
     bool save_keyframes_to_db(sqlite3* db, const std::string& table_name) const;
     bool save_landmarks_to_db(sqlite3* db, const std::string& table_name) const;
+    bool save_dense_points_to_db(sqlite3* db, const std::string& table_name) const;
     static std::vector<std::pair<std::string, std::string>> association_columns() {
         return std::vector<std::pair<std::string, std::string>>{
             {"lm_ids", "BLOB"},

@@ -87,7 +87,6 @@ public:
      */
     static std::vector<std::pair<std::string, std::string>> columns() {
         return std::vector<std::pair<std::string, std::string>>{
-            {"src_frm_id", "INTEGER"}, // removed
             {"ts", "REAL"},
             {"cam", "BLOB"},
             {"orb_params", "BLOB"},
@@ -96,7 +95,10 @@ public:
             {"undist_keypts", "BLOB"},
             {"x_rights", "BLOB"},
             {"depths", "BLOB"},
-            {"descs", "BLOB"}};
+            {"descs", "BLOB"},
+            {"image", "BLOB"},
+            {"depth", "BLOB"},
+            {"mask", "BLOB"}};
     };
     bool bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const;
 

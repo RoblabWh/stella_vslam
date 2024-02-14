@@ -16,6 +16,52 @@ dense_point::~dense_point() {
     SPDLOG_TRACE("dense_point::~dense_point: {}", id_);
 }
 
+std::shared_ptr<dense_point> dense_point::from_stmt(sqlite3_stmt* stmt,
+                                              std::unordered_map<unsigned int, std::shared_ptr<stella_vslam::data::keyframe>>& keyframes,
+                                              unsigned int next_dense_point_id,
+                                              unsigned int next_keyframe_id) {
+    const char* p;
+    int column_id = 0;
+    auto id = sqlite3_column_int64(stmt, column_id);
+    column_id++;
+    Vec3_t pos_w;
+    p = reinterpret_cast<const char*>(sqlite3_column_blob(stmt, column_id));
+    std::memcpy(pos_w.data(), p, sqlite3_column_bytes(stmt, column_id));
+    column_id++;
+    Color_t color;
+    p = reinterpret_cast<const char*>(sqlite3_column_blob(stmt, column_id));
+    std::memcpy(color.data(), p, sqlite3_column_bytes(stmt, column_id));
+    column_id++;
+    auto ref_keyfrm_id = sqlite3_column_int64(stmt, column_id);
+    column_id++;
+
+    auto ref_keyfrm = ref_keyfrm_id != (uint32_t) -1 ? keyframes.at(ref_keyfrm_id + next_keyframe_id) : std::shared_ptr<keyframe>(nullptr);
+
+    auto lm = std::make_shared<dense_point>(id + next_dense_point_id, pos_w, color, ref_keyfrm);
+    return lm;
+}
+
+bool dense_point::bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const {
+    int ret = SQLITE_ERROR;
+    int column_id = 1;
+    ret = sqlite3_bind_int64(stmt, column_id++, id_);
+    if (ret == SQLITE_OK) {
+        const Vec3_t pos_w = get_pos_in_world();
+        ret = sqlite3_bind_blob(stmt, column_id++, pos_w.data(), pos_w.rows() * pos_w.cols() * sizeof(decltype(pos_w)::Scalar), SQLITE_TRANSIENT);
+    }
+    if (ret == SQLITE_OK) {
+        const Color_t color = get_color_in_bgr();
+        ret = sqlite3_bind_blob(stmt, column_id++, color.data(), color.rows() * color.cols() * sizeof(decltype(color)::Scalar), SQLITE_TRANSIENT);
+    }
+    if (ret == SQLITE_OK) {
+        ret = sqlite3_bind_int64(stmt, column_id++, ref_keyfrm_.expired() ? -1 : ref_keyfrm_.lock()->id_);
+    }
+    if (ret != SQLITE_OK) {
+        spdlog::error("SQLite error (bind): {}", sqlite3_errmsg(db));
+    }
+    return ret == SQLITE_OK;
+}
+
 void dense_point::set_pos_in_world(const Vec3_t& pos_w) {
     std::lock_guard<std::mutex> lock(mtx_);
     SPDLOG_TRACE("dense_point::set_pos_in_world {}", id_);

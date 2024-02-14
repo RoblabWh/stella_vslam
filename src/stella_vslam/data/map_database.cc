@@ -494,7 +494,7 @@ void map_database::register_dense_point(const unsigned int id, const nlohmann::j
     const auto pos_w = Vec3_t(json_dense_point.at("pos_w").get<std::vector<Vec3_t::value_type>>().data());
     const auto color = Color_t(json_dense_point.at("color").get<std::vector<Color_t::value_type>>().data());
     const auto ref_keyfrm_id = json_dense_point.at("ref_keyfrm").get<int>() + next_keyframe_id_;
-    const auto ref_keyfrm = keyframes_.at(ref_keyfrm_id);
+    const auto ref_keyfrm = ref_keyfrm_id != (uint32_t) -1 ? keyframes_.at(ref_keyfrm_id) : std::shared_ptr<keyframe>(nullptr);
 
     auto point = std::make_shared<data::dense_point>(
         id, pos_w, color.reverse(), ref_keyfrm);
@@ -610,6 +610,10 @@ bool map_database::from_db(sqlite3* db,
         return false;
     }
     ok = load_associations_from_db(db, "associations");
+    if (!ok) {
+        return false;
+    }
+    ok = load_dense_points_from_db(db, "dense_points");
     if (!ok) {
         return false;
     }
@@ -757,6 +761,22 @@ bool map_database::load_associations_from_db(sqlite3* db, const std::string& tab
     return ret == SQLITE_DONE;
 }
 
+bool map_database::load_dense_points_from_db(sqlite3* db, const std::string& table_name) {
+    sqlite3_stmt* stmt = util::sqlite3_util::create_select_stmt(db, table_name);
+    if (!stmt) {
+        return false;
+    }
+
+    int ret = SQLITE_ERROR;
+    while ((ret = sqlite3_step(stmt)) == SQLITE_ROW) {
+        auto point = data::dense_point::from_stmt(stmt, keyframes_, next_dense_point_id_, next_keyframe_id_);
+        assert(!dense_points_.count(point->id_));
+        dense_points_[point->id_] = point;
+    }
+    sqlite3_finalize(stmt);
+    return ret == SQLITE_DONE;
+}
+
 bool map_database::to_db(sqlite3* db) const {
     std::lock_guard<std::mutex> lock(mtx_map_access_);
     for (const auto& id_keyfrm : keyframes_) {
@@ -769,9 +789,11 @@ bool map_database::to_db(sqlite3* db) const {
     bool ok = util::sqlite3_util::drop_table(db, "keyframes");
     ok = ok && util::sqlite3_util::drop_table(db, "landmarks");
     ok = ok && util::sqlite3_util::drop_table(db, "associations");
+    ok = ok && util::sqlite3_util::drop_table(db, "dense_points");
     ok = ok && save_keyframes_to_db(db, "keyframes");
     ok = ok && save_landmarks_to_db(db, "landmarks");
     ok = ok && save_associations_to_db(db, "associations");
+    ok = ok && save_dense_points_to_db(db, "dense_points");
     return ok;
 }
 
@@ -894,6 +916,30 @@ bool map_database::save_associations_to_db(sqlite3* db, const std::string& table
         assert(keyfrm);
         assert(!keyfrm->will_be_erased());
         ok = bind_association_to_stmt(stmt, keyfrm);
+        ok = ok && util::sqlite3_util::next(db, stmt);
+        if (!ok) {
+            return false;
+        }
+    }
+    sqlite3_finalize(stmt);
+    return util::sqlite3_util::commit(db);
+}
+
+bool map_database::save_dense_points_to_db(sqlite3* db, const std::string& table_name) const {
+    const auto columns = data::dense_point::columns();
+    bool ok = util::sqlite3_util::create_table(db, table_name, columns);
+    ok = ok && util::sqlite3_util::begin(db);
+    if (!ok) {
+        return false;
+    }
+    sqlite3_stmt* stmt = util::sqlite3_util::create_insert_stmt(db, table_name, columns);
+    if (!stmt) {
+        return false;
+    }
+    for (const auto& id_point : dense_points_) {
+        const auto point = id_point.second;
+        assert(point);
+        bool ok = point->bind_to_stmt(db, stmt);
         ok = ok && util::sqlite3_util::next(db, stmt);
         if (!ok) {
             return false;

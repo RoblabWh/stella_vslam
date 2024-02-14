@@ -83,14 +83,14 @@ bool map_database_io_sqlite3::load(const std::string& path,
 bool map_database_io_sqlite3::save_stats(sqlite3* db, const data::map_database* map_db) const {
     int ret = sqlite3_exec(db, "DROP TABLE IF EXISTS stats;", nullptr, nullptr, nullptr);
     if (ret == SQLITE_OK) {
-        ret = sqlite3_exec(db, "CREATE TABLE stats(id INTEGER PRIMARY KEY, frame_next_id INTEGER, keyframe_next_id INTEGER, landmark_next_id INTEGER);", nullptr, nullptr, nullptr);
+        ret = sqlite3_exec(db, "CREATE TABLE stats(id INTEGER PRIMARY KEY, keyframe_next_id INTEGER, landmark_next_id INTEGER, dense_point_next_id INTEGER);", nullptr, nullptr, nullptr);
     }
     if (ret == SQLITE_OK) {
         ret = sqlite3_exec(db, "BEGIN;", nullptr, nullptr, nullptr);
     }
     sqlite3_stmt* stmt = nullptr;
     if (ret == SQLITE_OK) {
-        ret = sqlite3_prepare_v2(db, "INSERT INTO stats(id, frame_next_id, keyframe_next_id, landmark_next_id) VALUES(?, ?, ?, ?)", -1, &stmt, nullptr);
+        ret = sqlite3_prepare_v2(db, "INSERT INTO stats(id, keyframe_next_id, landmark_next_id, dense_point_next_id) VALUES(?, ?, ?, ?)", -1, &stmt, nullptr);
     }
     if (ret != SQLITE_OK) {
         spdlog::error("SQLite error: {}", sqlite3_errmsg(db));
@@ -100,10 +100,13 @@ bool map_database_io_sqlite3::save_stats(sqlite3* db, const data::map_database* 
         ret = sqlite3_bind_int64(stmt, 1, 0);
     }
     if (ret == SQLITE_OK) {
-        ret = sqlite3_bind_int64(stmt, 3, map_db->next_keyframe_id_);
+        ret = sqlite3_bind_int64(stmt, 2, map_db->next_keyframe_id_);
     }
     if (ret == SQLITE_OK) {
-        ret = sqlite3_bind_int64(stmt, 4, map_db->next_landmark_id_);
+        ret = sqlite3_bind_int64(stmt, 3, map_db->next_landmark_id_);
+    }
+    if (ret == SQLITE_OK) {
+        ret = sqlite3_bind_int64(stmt, 4, map_db->next_dense_point_id_);
     }
     if (ret != SQLITE_OK) {
         spdlog::error("SQLite error: {}", sqlite3_errmsg(db));
@@ -137,8 +140,9 @@ bool map_database_io_sqlite3::load_stats(sqlite3* db, data::map_database* map_db
     }
 
     ret = sqlite3_step(stmt);
-    map_db->next_keyframe_id_ = sqlite3_column_int64(stmt, 2);
-    map_db->next_landmark_id_ = sqlite3_column_int64(stmt, 3);
+    map_db->next_keyframe_id_ = sqlite3_column_int64(stmt, 1);
+    map_db->next_landmark_id_ = sqlite3_column_int64(stmt, 2);
+    map_db->next_dense_point_id_ = sqlite3_column_int64(stmt, 3);
     sqlite3_finalize(stmt);
     return ret == SQLITE_ROW;
 }

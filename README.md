@@ -39,7 +39,7 @@ More options are available
 ```
 
 ### Running our examples
-We present two illustrative examples to evaluate our method. The first utilizes a high-definition (HD) equirectangular video and boasts real-time processing capabilities. In contrast, the second example employs a 5.7k video, yielding a point cloud of higher quality. To execute the first example seamlessly, a computer equipped with 16GB of RAM and an NVIDIA graphics card is required. However, for the second example, a more robust system with 128GB of RAM (in addition to an NVIDIA graphics card) is necessary. While using swap space is an option, it significantly compromises performance speed.
+We present two illustrative examples to evaluate our method. The first utilizes a high-definition (HD) equirectangular video and boasts real-time processing capabilities. In contrast, the second example employs a 5.7k video, yielding a point cloud of higher quality. To execute the first example seamlessly, a computer equipped with 16GB of RAM and an NVIDIA graphics card is required. However, for the second example, a more robust system with 32GB of RAM (in addition to an NVIDIA graphics card) is necessary.
 
 #### HD / Real time example
 Prepare dataset in container
@@ -53,7 +53,7 @@ curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/stella_
 
 Run VSLAM in container
 ```
-./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/dense/dense_hd.yaml -m /data/example_inspection_flight_drz_hd.mp4 --frame-skip 3 -o /data/example_inspection_flight_drz_hd.msg -p /data/example_inspection_flight_drz_hd.ply -k /data/example_inspection_flight_drz_keyframes_hd/
+./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/dense/dense_hd.yaml -m /data/example_inspection_flight_drz_hd.mp4 --frame-skip 3 -o /data/example_inspection_flight_drz_hd.db -p /data/example_inspection_flight_drz_hd.ply -k /data/example_inspection_flight_drz_keyframes_hd/
 ```
 
 #### High quality example
@@ -68,7 +68,7 @@ curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/stella_
 
 Run VSLAM in container
 ```
-./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/dense/dense.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 3 -o /data/example_inspection_flight_drz.msg -p /data/example_inspection_flight_drz.ply -k /data/example_inspection_flight_drz_keyframes/
+./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/dense/dense.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 3 -o /data/example_inspection_flight_drz.db -p /data/example_inspection_flight_drz.ply -k /data/example_inspection_flight_drz_keyframes/
 ```
 
 #### NeRF example
@@ -81,21 +81,25 @@ curl -u "dF2wQbFNW2zuCpK:fire" "https://w-hs.sciebo.de/public.php/webdav/stella_
 
 Run VSLAM and export script in container
 ```
-./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/nerf/nerf.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 10 -o /data/example_inspection_flight_drz_nerf.msg --no-sleep --auto-term --viewer none
+./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/nerf/nerf.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 10 -o /data/example_inspection_flight_drz_nerf.db --no-sleep --auto-term --viewer none
 
-/stella_vslam/scripts/export_dense_msg_to_nerf.py /data/example_inspection_flight_drz_nerf.msg /data/example_inspection_flight_drz_nerf/
+/stella_vslam/scripts/export_sqlite3_to_nerf.py /data/example_inspection_flight_drz_nerf.db /data/example_inspection_flight_drz_nerf/
 ```
 
 Run nerfstudio on the host or in another container
 
 ## Additional export scripts
-Exporting point cloud from msgpack to ply
+Exporting the project from sqlite3 for use with [nerfstudio](https://docs.nerf.studio/)
 ```
-/stella_vslam/scripts/export_dense_msg_to_ply.py -i ${PATH_TO_MSGPACK:?} -o ${PATH_TO_PLY:?}
+/stella_vslam/scripts/export_sqlite3_to_nerf.py ${PATH_TO_DB:?} ${PATH_TO_OUTPUT:?}
 ```
 Exporting the project from msgpack for use with [nerfstudio](https://docs.nerf.studio/)
 ```
-/stella_vslam/scripts/export_dense_msg_to_nerf.py ${PATH_TO_MSGPACK:?} ${PATH_TO_OUTPUT:?}
+/stella_vslam/scripts/export_msgpack_to_nerf.py ${PATH_TO_MSG:?} ${PATH_TO_OUTPUT:?}
+```
+Exporting point cloud from msgpack to ply
+```
+/stella_vslam/scripts/export_dense_msg_to_ply.py -i ${PATH_TO_MSG:?} -o ${PATH_TO_PLY:?}
 ```
 
 ## Citation of original PatchMatch integration for OpenVSLAM

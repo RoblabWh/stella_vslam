@@ -88,8 +88,6 @@ std::shared_ptr<keyframe> keyframe::from_stmt(sqlite3_stmt* stmt,
     int column_id = 0;
     auto id = sqlite3_column_int64(stmt, column_id);
     column_id++;
-    // NOTE: src_frm_id is removed
-    column_id++;
     auto timestamp = sqlite3_column_double(stmt, column_id);
     column_id++;
     p = reinterpret_cast<const char*>(sqlite3_column_blob(stmt, column_id));
@@ -132,6 +130,28 @@ std::shared_ptr<keyframe> keyframe::from_stmt(sqlite3_stmt* stmt,
     std::memcpy(descriptors.data, p, sqlite3_column_bytes(stmt, column_id));
     column_id++;
 
+    cv::Mat image;
+    p = reinterpret_cast<const char*>(sqlite3_column_blob(stmt, column_id));
+    std::vector<uint8_t> image_raw(p, p + sqlite3_column_bytes(stmt, column_id));
+    if (!image_raw.empty()) {
+        image = cv::imdecode(image_raw, cv::IMREAD_COLOR);
+    }
+    column_id++;
+    cv::Mat depth;
+    p = reinterpret_cast<const char*>(sqlite3_column_blob(stmt, column_id));
+    std::vector<uint8_t> depth_raw(p, p + sqlite3_column_bytes(stmt, column_id));
+    if (!depth_raw.empty()) {
+        depth = cv::imdecode(depth_raw, cv::IMREAD_UNCHANGED);
+    }
+    column_id++;
+    cv::Mat mask;
+    p = reinterpret_cast<const char*>(sqlite3_column_blob(stmt, column_id));
+    std::vector<uint8_t> mask_raw(p, p + sqlite3_column_bytes(stmt, column_id));
+    if (!mask_raw.empty()) {
+        mask = cv::imdecode(mask_raw, cv::IMREAD_GRAYSCALE);
+    }
+    column_id++;
+
     auto bearings = eigen_alloc_vector<Vec3_t>();
     camera->convert_keypoints_to_bearings(undist_keypts, bearings);
     assert(bearings.size() == num_keypts);
@@ -148,7 +168,7 @@ std::shared_ptr<keyframe> keyframe::from_stmt(sqlite3_stmt* stmt,
     data::bow_vocabulary_util::compute_bow(bow_vocab, descriptors, bow_vec, bow_feat_vec);
     auto keyfrm = data::keyframe::make_keyframe(
         id + next_keyframe_id, timestamp, pose_cw, camera, orb_params,
-        frm_obs, bow_vec, bow_feat_vec, cv::Mat(), cv::Mat(), cv::Mat());
+        frm_obs, bow_vec, bow_feat_vec, image, depth, mask);
     return keyfrm;
 }
 
@@ -220,8 +240,6 @@ bool keyframe::bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const {
     int ret = SQLITE_ERROR;
     int column_id = 1;
     ret = sqlite3_bind_int64(stmt, column_id++, id_);
-    // NOTE: src_frm_id is removed
-    column_id++;
     ret = sqlite3_bind_double(stmt, column_id++, timestamp_);
     if (ret == SQLITE_OK) {
         const auto& camera_name = camera_->name_;
@@ -261,6 +279,27 @@ bool keyframe::bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const {
         assert(descriptors.rows > 0 && static_cast<size_t>(descriptors.rows) == num_keypts);
         assert(descriptors.elemSize() == 1);
         ret = sqlite3_bind_blob(stmt, column_id++, descriptors.data, descriptors.total() * descriptors.elemSize(), SQLITE_TRANSIENT);
+    }
+    if (ret == SQLITE_OK) {
+        std::vector<uint8_t> img;
+        if (!img_.empty()) {
+            cv::imencode(".png", img_, img);
+        }
+        ret = sqlite3_bind_blob(stmt, column_id++, img.data(), img.size(), SQLITE_TRANSIENT);
+    }
+    if (ret == SQLITE_OK) {
+        std::vector<uint8_t> depth;
+        if (!depth_.empty()) {
+            cv::imencode(".png", depth_, depth);
+        }
+        ret = sqlite3_bind_blob(stmt, column_id++, depth.data(), depth.size(), SQLITE_TRANSIENT);
+    }
+    if (ret == SQLITE_OK) {
+        std::vector<uint8_t> mask;
+        if (!mask_.empty()) {
+            cv::imencode(".png", mask_, mask);
+        }
+        ret = sqlite3_bind_blob(stmt, column_id++, mask.data(), mask.size(), SQLITE_TRANSIENT);
     }
     if (ret != SQLITE_OK) {
         spdlog::error("SQLite error (bind): {}", sqlite3_errmsg(db));
