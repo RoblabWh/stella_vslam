@@ -218,7 +218,9 @@ void dense_module::retrieve_latest_keyframe() {
             for (; dense_iter != dense.end(); ++dense_iter, ++color_iter) {
                 const cv::Vec3d &p = *dense_iter;
                 const cv::Vec3b &c = *color_iter;
-                auto point = std::make_shared<data::dense_point>(map_db_->next_dense_point_id_, Vec3_t(p[0], p[1], p[2]), Color_t(c[0], c[1], c[2]), keyfrm);
+                auto point = std::make_shared<data::dense_point>(map_db_->next_dense_point_id_, Vec3_t(p[0], p[1], p[2]), Color_t(c[0], c[1], c[2]));
+                //TODO Feature: add dense point to other related keyframes (problematic with current update strategy)
+                keyfrm->add_dense_point(point);
                 map_db_->add_dense_point(point, map_db_->next_dense_point_id_);
                 map_db_->next_dense_point_id_ += 1;
             }

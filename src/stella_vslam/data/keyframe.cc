@@ -2,6 +2,7 @@
 #include "stella_vslam/data/frame.h"
 #include "stella_vslam/data/keyframe.h"
 #include "stella_vslam/data/landmark.h"
+#include "stella_vslam/data/dense_point.h"
 #include "stella_vslam/data/marker.h"
 #include "stella_vslam/data/map_database.h"
 #include "stella_vslam/data/bow_database.h"
@@ -24,7 +25,7 @@ keyframe::keyframe(unsigned int id, const frame& frm)
       frm_obs_(frm.frm_obs_), markers_2d_(frm.markers_2d_),
       bow_vec_(frm.bow_vec_), bow_feat_vec_(frm.bow_feat_vec_),
       img_(frm.img_), depth_(cv::Mat()), mask_(frm.mask_),
-      landmarks_(frm.get_landmarks()) {
+      landmarks_(frm.get_landmarks()), dense_points_(std::vector<std::shared_ptr<dense_point>>()) {
     // set pose parameters (pose_wc_, trans_wc_) using frm.pose_cw_
     set_pose_cw(frm.get_pose_cw());
 }
@@ -33,7 +34,8 @@ keyframe::keyframe(const unsigned int id, const double timestamp,
                    const Mat44_t& pose_cw, camera::base* camera,
                    const feature::orb_params* orb_params, const frame_observation& frm_obs,
                    const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec,
-                   const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask)
+                   const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask,
+                   const std::vector<std::shared_ptr<dense_point>> &dense_points)
     : id_(id),
       timestamp_(timestamp), camera_(camera),
       orb_params_(orb_params), frm_obs_(frm_obs),
@@ -42,6 +44,9 @@ keyframe::keyframe(const unsigned int id, const double timestamp,
       landmarks_(std::vector<std::shared_ptr<landmark>>(frm_obs_.num_keypts_, nullptr)) {
     // set pose parameters (pose_wc_, trans_wc_) using pose_cw_
     set_pose_cw(pose_cw);
+
+    // set dense points after setting pose to avoid incorrect pose update
+    dense_points_ = dense_points;
 
     // The following process needs to take place:
     //   should set the pointers of landmarks_ using add_landmark()
@@ -67,13 +72,14 @@ std::shared_ptr<keyframe> keyframe::make_keyframe(
     const Mat44_t& pose_cw, camera::base* camera,
     const feature::orb_params* orb_params, const frame_observation& frm_obs,
     const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec,
-    const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask) {
+    const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask,
+    const std::vector<std::shared_ptr<dense_point>> &dense_points) {
     auto ptr = std::allocate_shared<keyframe>(
         Eigen::aligned_allocator<keyframe>(),
         id, timestamp,
         pose_cw, camera, orb_params,
         frm_obs, bow_vec, bow_feat_vec,
-        img, depth, mask);
+        img, depth, mask, dense_points);
     // covisibility graph node (connections is not assigned yet)
     ptr->graph_node_ = stella_vslam::make_unique<graph_node>(ptr);
     return ptr;
@@ -83,7 +89,9 @@ std::shared_ptr<keyframe> keyframe::from_stmt(sqlite3_stmt* stmt,
                                               camera_database* cam_db,
                                               orb_params_database* orb_params_db,
                                               bow_vocabulary* bow_vocab,
-                                              unsigned int next_keyframe_id) {
+                                              const std::unordered_map<unsigned int, std::shared_ptr<dense_point>> &all_dense_points,
+                                              unsigned int next_keyframe_id,
+                                              unsigned int next_dense_point_id) {
     const char* p;
     int column_id = 0;
     auto id = sqlite3_column_int64(stmt, column_id);
@@ -151,6 +159,13 @@ std::shared_ptr<keyframe> keyframe::from_stmt(sqlite3_stmt* stmt,
         mask = cv::imdecode(mask_raw, cv::IMREAD_GRAYSCALE);
     }
     column_id++;
+    std::vector<std::shared_ptr<dense_point>> dense_points;
+    p = reinterpret_cast<const char*>(sqlite3_column_blob(stmt, column_id));
+    std::vector<unsigned int> dense_point_indices(reinterpret_cast<const unsigned int*>(p), reinterpret_cast<const unsigned int*>(p + sqlite3_column_bytes(stmt, column_id)));
+    for (auto idx : dense_point_indices) {
+        dense_points.push_back(all_dense_points.at(idx + next_dense_point_id));
+    }
+    column_id++;
 
     auto bearings = eigen_alloc_vector<Vec3_t>();
     camera->convert_keypoints_to_bearings(undist_keypts, bearings);
@@ -168,7 +183,7 @@ std::shared_ptr<keyframe> keyframe::from_stmt(sqlite3_stmt* stmt,
     data::bow_vocabulary_util::compute_bow(bow_vocab, descriptors, bow_vec, bow_feat_vec);
     auto keyfrm = data::keyframe::make_keyframe(
         id + next_keyframe_id, timestamp, pose_cw, camera, orb_params,
-        frm_obs, bow_vec, bow_feat_vec, image, depth, mask);
+        frm_obs, bow_vec, bow_feat_vec, image, depth, mask, dense_points);
     return keyfrm;
 }
 
@@ -213,6 +228,8 @@ nlohmann::json keyframe::to_json() const {
         cv::imencode(".png", mask_, mask);
     }
 
+    const std::vector<unsigned int> dense_point_indices = get_dense_point_indices();
+
     return {{"ts", timestamp_},
             {"cam", camera_->name_},
             {"orb_params", orb_params_->name_},
@@ -233,7 +250,8 @@ nlohmann::json keyframe::to_json() const {
             // images
             {"image", img},
             {"depth", depth},
-            {"mask", mask}};
+            {"mask", mask},
+            {"dense_pts", dense_point_indices}};
 }
 
 bool keyframe::bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const {
@@ -301,6 +319,10 @@ bool keyframe::bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const {
         }
         ret = sqlite3_bind_blob(stmt, column_id++, mask.data(), mask.size(), SQLITE_TRANSIENT);
     }
+    if (ret == SQLITE_OK) {
+        const std::vector<unsigned int> dense_point_indices = get_dense_point_indices();
+        ret = sqlite3_bind_blob(stmt, column_id++, dense_point_indices.data(), dense_point_indices.size() * sizeof(unsigned int), SQLITE_TRANSIENT);
+    }
     if (ret != SQLITE_OK) {
         spdlog::error("SQLite error (bind): {}", sqlite3_errmsg(db));
     }
@@ -309,6 +331,9 @@ bool keyframe::bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const {
 
 void keyframe::set_pose_cw(const Mat44_t& pose_cw) {
     std::lock_guard<std::mutex> lock(mtx_pose_);
+
+    const Vec3_t trans_wc_old = trans_wc_;
+
     pose_cw_ = pose_cw;
 
     const Mat33_t rot_cw = pose_cw_.block<3, 3>(0, 0);
@@ -319,6 +344,8 @@ void keyframe::set_pose_cw(const Mat44_t& pose_cw) {
     pose_wc_ = Mat44_t::Identity();
     pose_wc_.block<3, 3>(0, 0) = rot_wc;
     pose_wc_.block<3, 1>(0, 3) = trans_wc_;
+
+    update_dense_points(trans_wc_ - trans_wc_old);
 }
 
 Mat44_t keyframe::get_pose_cw() const {
@@ -451,6 +478,45 @@ unsigned int keyframe::get_num_tracked_landmarks(const unsigned int min_num_obs_
 std::shared_ptr<landmark>& keyframe::get_landmark(const unsigned int idx) {
     std::lock_guard<std::mutex> lock(mtx_observations_);
     return landmarks_.at(idx);
+}
+
+void keyframe::add_dense_point(std::shared_ptr<dense_point> point) {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    dense_points_.push_back(point);
+}
+
+void keyframe::erase_dense_point(const unsigned int idx) {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    dense_points_.at(idx) = nullptr;
+}
+
+void keyframe::update_dense_points(const Vec3_t &correction) {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    for (auto &point : dense_points_) {
+        point->set_pos_in_world(point->get_pos_in_world() + correction);
+    }
+}
+
+std::vector<std::shared_ptr<dense_point>> keyframe::get_dense_points() const {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    return dense_points_;
+}
+
+std::vector<unsigned int> keyframe::get_dense_point_indices() const {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    std::vector<unsigned int> indices;
+    indices.reserve(dense_points_.size());
+    for (const auto &p: dense_points_) {
+        if (p) {
+            indices.push_back(p->id_);
+        }
+    }
+    return indices;
+}
+
+std::shared_ptr<dense_point>& keyframe::get_dense_point(const unsigned int idx) {
+    std::lock_guard<std::mutex> lock(mtx_observations_);
+    return dense_points_.at(idx);
 }
 
 std::vector<unsigned int> keyframe::get_keypoints_in_cell(const float ref_x, const float ref_y, const float margin,

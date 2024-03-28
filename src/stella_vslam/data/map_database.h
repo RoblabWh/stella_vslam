@@ -318,7 +318,7 @@ private:
      * @param json_keyfrm
      */
     void register_keyframe(camera_database* cam_db, orb_params_database* orb_params_db, bow_vocabulary* bow_vocab,
-                           const unsigned int id, const nlohmann::json& json_keyfrm);
+                           const unsigned int id, const nlohmann::json& json_keyfrm, const std::unordered_map<unsigned int, std::shared_ptr<dense_point>> &all_dense_points);
 
     /**
      * Decode JSON and register landmark information to the map database
@@ -334,7 +334,8 @@ private:
      * @param id
      * @param json_dense_point
      */
-    void register_dense_point(const unsigned int id, const nlohmann::json& json_dense_point);
+    void register_dense_point(const unsigned int id, const nlohmann::json& json_dense_point,
+                              std::unordered_map<unsigned int, std::shared_ptr<dense_point>> &dense_points);
 
     /**
      * Decode JSON and register essential graph information
@@ -356,11 +357,12 @@ private:
                                 const std::string& table_name,
                                 camera_database* cam_db,
                                 orb_params_database* orb_params_db,
-                                bow_vocabulary* bow_vocab);
+                                bow_vocabulary* bow_vocab,
+                                const std::unordered_map<unsigned int, std::shared_ptr<dense_point>> &dense_points);
     bool load_landmarks_from_db(sqlite3* db, const std::string& table_name);
     void load_association_from_stmt(sqlite3_stmt* stmt);
     bool load_associations_from_db(sqlite3* db, const std::string& table_name);
-    bool load_dense_points_from_db(sqlite3* db, const std::string& table_name);
+    bool load_dense_points_from_db(sqlite3* db, const std::string& table_name, std::unordered_map<unsigned int, std::shared_ptr<dense_point>> &dense_points);
     bool save_keyframes_to_db(sqlite3* db, const std::string& table_name) const;
     bool save_landmarks_to_db(sqlite3* db, const std::string& table_name) const;
     bool save_dense_points_to_db(sqlite3* db, const std::string& table_name) const;
@@ -390,7 +392,7 @@ private:
     //! IDs and markers
     std::unordered_map<unsigned int, std::shared_ptr<marker>> markers_;
     //! IDs and dense points
-    std::unordered_map<unsigned int, std::shared_ptr<dense_point>> dense_points_;
+    std::unordered_map<unsigned int, std::weak_ptr<dense_point>> dense_points_;
 
     //! spanning roots
     std::vector<std::shared_ptr<keyframe>> spanning_roots_;

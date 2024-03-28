@@ -115,6 +115,7 @@ system::system(const std::shared_ptr<config>& cfg, const std::string& vocab_file
     mapper_->set_dense_module(dense_);
     global_optimizer_->set_tracking_module(tracker_);
     global_optimizer_->set_mapping_module(mapper_);
+    global_optimizer_->set_dense_module(dense_);
 }
 
 system::~system() {

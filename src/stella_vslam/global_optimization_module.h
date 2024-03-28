@@ -18,6 +18,7 @@ namespace stella_vslam {
 
 class tracking_module;
 class mapping_module;
+class dense_module;
 
 namespace data {
 class keyframe;
@@ -40,6 +41,9 @@ public:
 
     //! Set the tracking module
     void set_tracking_module(tracking_module* tracker);
+
+    //! Set the dense module
+    void set_dense_module(dense_module* dense);
 
     //! Set the mapping module
     void set_mapping_module(mapping_module* mapper);
@@ -228,6 +232,8 @@ private:
     tracking_module* tracker_ = nullptr;
     //! mapping module
     mapping_module* mapper_ = nullptr;
+    //! mapping module
+    dense_module* dense_ = nullptr;
 
     //! loop detector
     std::unique_ptr<module::loop_detector> loop_detector_ = nullptr;

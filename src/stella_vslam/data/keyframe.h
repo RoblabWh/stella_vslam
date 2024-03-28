@@ -28,6 +28,7 @@ namespace data {
 
 class frame;
 class landmark;
+class dense_point;
 class marker;
 class marker2d;
 class map_database;
@@ -52,7 +53,8 @@ public:
              const double timestamp, const Mat44_t& pose_cw, camera::base* camera,
              const feature::orb_params* orb_params, const frame_observation& frm_obs,
              const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec,
-             const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask);
+             const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask,
+             const std::vector<std::shared_ptr<dense_point>> &dense_points);
     virtual ~keyframe();
 
     // Factory method for create keyframe
@@ -62,12 +64,15 @@ public:
         const double timestamp, const Mat44_t& pose_cw, camera::base* camera,
         const feature::orb_params* orb_params, const frame_observation& frm_obs,
         const bow_vector& bow_vec, const bow_feature_vector& bow_feat_vec,
-        const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask);
+        const cv::Mat& img, const cv::Mat& depth, const cv::Mat& mask,
+        const std::vector<std::shared_ptr<dense_point>> &dense_points);
     static std::shared_ptr<keyframe> from_stmt(sqlite3_stmt* stmt,
                                                camera_database* cam_db,
                                                orb_params_database* orb_params_db,
                                                bow_vocabulary* bow_vocab,
-                                               unsigned int next_keyframe_id);
+                                               const std::unordered_map<unsigned int, std::shared_ptr<dense_point>> &all_dense_points,
+                                               unsigned int next_keyframe_id,
+                                               unsigned int next_dense_point_id);
 
     // operator overrides
     bool operator==(const keyframe& keyfrm) const { return id_ == keyfrm.id_; }
@@ -98,7 +103,8 @@ public:
             {"descs", "BLOB"},
             {"image", "BLOB"},
             {"depth", "BLOB"},
-            {"mask", "BLOB"}};
+            {"mask", "BLOB"},
+            {"dense_pts", "BLOB"}};
     };
     bool bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const;
 
@@ -188,6 +194,36 @@ public:
      * Get the landmark associated keypoint idx
      */
     std::shared_ptr<landmark>& get_landmark(const unsigned int idx);
+
+    /**
+     * Add a dense point observed by myself at keypoint idx
+     */
+    void add_dense_point(std::shared_ptr<dense_point> point);
+
+    /**
+     * Erase a dense point at idx
+     */
+    void erase_dense_point(const unsigned int idx);
+
+    /**
+     * Update all of the dense points
+     */
+    void update_dense_points(const Vec3_t &correction);
+
+    /**
+     * Get all of the dense points
+     */
+    std::vector<std::shared_ptr<dense_point>> get_dense_points() const;
+
+    /**
+     * Get all indices of the dense points
+     */
+    std::vector<unsigned int> get_dense_point_indices() const;
+
+    /**
+     * Get the dense point associated keypoint idx
+     */
+    std::shared_ptr<dense_point>& get_dense_point(const unsigned int idx);
 
     /**
      * Get the keypoint indices in the cell which reference point is located
@@ -312,6 +348,8 @@ private:
     mutable std::mutex mtx_observations_;
     //! observed landmarks
     std::vector<std::shared_ptr<landmark>> landmarks_;
+    //! associated dense points
+    std::vector<std::shared_ptr<dense_point>> dense_points_;
 
     //-----------------------------------------
     // marker observations

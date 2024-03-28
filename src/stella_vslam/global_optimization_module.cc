@@ -1,6 +1,7 @@
 #include "stella_vslam/global_optimization_module.h"
 #include "stella_vslam/mapping_module.h"
 #include "stella_vslam/tracking_module.h"
+#include "stella_vslam/dense_module.h"
 #include "stella_vslam/data/keyframe.h"
 #include "stella_vslam/data/landmark.h"
 #include "stella_vslam/data/map_database.h"
@@ -37,6 +38,10 @@ void global_optimization_module::set_tracking_module(tracking_module* tracker) {
 void global_optimization_module::set_mapping_module(mapping_module* mapper) {
     mapper_ = mapper;
     loop_bundle_adjuster_->set_mapping_module(mapper);
+}
+
+void global_optimization_module::set_dense_module(dense_module* dense) {
+    dense_ = dense;
 }
 
 void global_optimization_module::enable_loop_detector() {
@@ -220,14 +225,16 @@ void global_optimization_module::correct_loop() {
 
     // pause the mapping module
     SPDLOG_TRACE("global_optimization_module: pause the mapping module");
-    auto future_pause = mapper_->async_pause();
+    auto future_pause_mapper = mapper_->async_pause();
+    auto future_pause_dense = dense_->async_pause();
     // abort the previous loop bundle adjuster
     if (thread_for_loop_BA_ || loop_bundle_adjuster_->is_running()) {
         SPDLOG_TRACE("global_optimization_module: abort loop bundle adjustment");
         abort_loop_BA();
     }
     // wait till the mapping module pauses
-    future_pause.get();
+    future_pause_mapper.get();
+    future_pause_dense.get();
 
     // 1. compute the Sim3 of the covisibilities of the current keyframe whose Sim3 is already estimated by the loop detector
     //    then, the covisibilities are moved to the corrected positions
@@ -301,6 +308,7 @@ void global_optimization_module::correct_loop() {
     SPDLOG_TRACE("global_optimization_module: resume the mapping module");
     // resume the mapping module
     mapper_->resume();
+    dense_->resume();
 
     // set the loop fusion information to the loop detector
     loop_detector_->set_loop_correct_keyframe_id(cur_keyfrm_->id_);

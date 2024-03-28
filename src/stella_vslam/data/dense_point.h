@@ -27,15 +27,12 @@ public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     //! constructor
-    dense_point(unsigned int id, const Vec3_t& pos_w, const Color_t& color, const std::shared_ptr<keyframe>& ref_keyfrm);
+    dense_point(unsigned int id, const Vec3_t& pos_w, const Color_t& color);
 
     virtual ~dense_point();
 
     // Factory method for create landmark
-    static std::shared_ptr<dense_point> from_stmt(sqlite3_stmt* stmt,
-                                               std::unordered_map<unsigned int, std::shared_ptr<stella_vslam::data::keyframe>>& keyframes,
-                                               unsigned int next_dense_point_id,
-                                               unsigned int next_keyframe_id);
+    static std::shared_ptr<dense_point> from_stmt(sqlite3_stmt* stmt, unsigned int next_dense_point_id);
 
     /**
      * Save this landmark information to db
@@ -43,8 +40,7 @@ public:
     static std::vector<std::pair<std::string, std::string>> columns() {
         return std::vector<std::pair<std::string, std::string>>{
             {"pos_w", "BLOB"},
-            {"color", "BLOB"},
-            {"ref_keyfrm", "INTEGER"}};
+            {"color", "BLOB"}};
     };
     bool bind_to_stmt(sqlite3* db, sqlite3_stmt* stmt) const;
 
@@ -78,9 +74,6 @@ private:
 
     //! color of this dense point
     Color_t color_;
-
-    //! reference keyframe
-    std::weak_ptr<keyframe> ref_keyfrm_;
 
     mutable std::mutex mtx_;
 };
