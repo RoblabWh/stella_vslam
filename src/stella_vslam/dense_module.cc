@@ -180,8 +180,8 @@ void dense_module::dispatch_new_keyframe() {
     util::resize(keyfrm->mask_, mask, depth_res_);
     util::convert_to_bgr(img, camera_->color_order_);
     auto retval = patch_match_->addView(R, t, img, mask, sparse);
-    spdlog::info(patch_match_module::retval_to_cstr(retval));
     if (retval == patch_match_module::SUCCESS) {
+        spdlog::trace("patch_match_module::addView: {}", patch_match_module::retval_to_cstr(retval));
         if (count_init_frames_ > 0) {
             --count_init_frames_;
             std::lock_guard<std::mutex> lock(mtx_keyfrm_queue_);
@@ -192,15 +192,19 @@ void dense_module::dispatch_new_keyframe() {
             proc_queue_.push_back(keyfrm);
         }
     }
+    else {
+        spdlog::debug("patch_match_module::addView: {}", patch_match_module::retval_to_cstr(retval));
+    }
 }
 
 void dense_module::retrieve_latest_keyframe() {
     cv::Mat depthmap;
     std::vector<cv::Vec3d> dense;
     std::vector<cv::Vec3b> color;
-    auto retval = patch_match_->getDepth(depthmap, dense, color, false);
+    static patch_match_module::ReturnValue retval_last = patch_match_module::SUCCESS;
+    patch_match_module::ReturnValue retval = patch_match_->getDepth(depthmap, dense, color, false);
     if (retval == patch_match_module::SUCCESS) {
-        spdlog::info("Adding dense points to map");
+        spdlog::trace("patch_match_module::getDepth: {}", patch_match_module::retval_to_cstr(retval));
         std::shared_ptr<data::keyframe> keyfrm = proc_queue_.front();
         proc_queue_.pop_front();
 
@@ -225,6 +229,10 @@ void dense_module::retrieve_latest_keyframe() {
             promise_add_keyfrm_queue_.pop_front();
         }
     }
+    else if (retval != retval_last) {
+        spdlog::trace("patch_match_module::addView: {}", patch_match_module::retval_to_cstr(retval));
+    }
+    retval_last = retval;
 }
 
 std::shared_future<void> dense_module::async_reset() {
