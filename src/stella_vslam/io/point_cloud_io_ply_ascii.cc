@@ -20,9 +20,12 @@ bool point_cloud_io_ply_ascii::save(const std::string& path,
     if (ofs.is_open()) {
         spdlog::info("save the PLY file of point cloud to {}", path);
 
+        std::vector<std::shared_ptr<data::dense_point>> points;
+        points = map_db->get_all_dense_points();
+
         ofs << "ply\n"
                "format ascii 1.0\n"
-               "element vertex " << map_db->get_num_dense_points() << '\n';
+               "element vertex " << points.size() << '\n';
         ofs << "property float x\n"
                "property float y\n"
                "property float z\n"
@@ -32,8 +35,6 @@ bool point_cloud_io_ply_ascii::save(const std::string& path,
                "end_header\n"
             << std::fixed;
 
-        std::vector<std::shared_ptr<data::dense_point>> points;
-        points = map_db->get_all_dense_points();
         for (const auto& point : points) {
             const Vec3_t &pos_w = point->get_pos_in_world();
             const Color_t &color = point->get_color_in_rgb();

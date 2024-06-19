@@ -220,12 +220,6 @@ public:
     unsigned int get_num_landmarks() const;
 
     /**
-     * Get the number of dense points
-     * @return
-     */
-    unsigned int get_num_dense_points() const;
-
-    /**
      * Get minimum threshold for covisibility graph connection
      * @return minimum threshold for covisibility graph connection
      */

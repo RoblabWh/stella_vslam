@@ -263,11 +263,6 @@ unsigned int map_database::get_num_landmarks() const {
     return landmarks_.size();
 }
 
-unsigned int map_database::get_num_dense_points() const {
-    std::lock_guard<std::mutex> lock(mtx_map_access_);
-    return dense_points_.size();
-}
-
 unsigned int map_database::get_min_num_shared_lms() const {
     return min_num_shared_lms_;
 }

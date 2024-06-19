@@ -70,7 +70,7 @@ unsigned int map_publisher::get_landmarks(std::vector<std::shared_ptr<data::land
 
 unsigned int map_publisher::get_dense_points(std::vector<std::shared_ptr<data::dense_point>>& all_dense_points) {
     all_dense_points = map_db_->get_all_dense_points();
-    return map_db_->get_num_dense_points();
+    return all_dense_points.size();
 }
 
 } // namespace publish
