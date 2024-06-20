@@ -11,6 +11,50 @@ from scipy.spatial.transform import Rotation as R
 from numba import jit
 
 
+def point_cloud_to_ply(output, points, colors, scale=1):
+    with open(output, "w", encoding="utf-8") as fp:
+        lines = _point_cloud_to_ply_lines(points, colors, scale)
+        fp.writelines(lines)
+
+def _point_cloud_to_ply_lines(points, colors, scale):
+    yield "ply\n"
+    yield "format ascii 1.0\n"
+    yield "element vertex {}\n".format(len(points))
+    yield "property float x\n"
+    yield "property float y\n"
+    yield "property float z\n"
+    if colors:
+        yield "property uchar red\n"
+        yield "property uchar green\n"
+        yield "property uchar blue\n"
+    yield "end_header\n"
+
+    if colors:
+        template = "{:.4f} {:.4f} {:.4f} {} {} {}\n"
+        for i in range(len(points)):
+            p, c = points[i], colors[i]
+            yield template.format(
+                scale*p[0],
+                scale*p[1],
+                scale*p[2],
+                int(c[2]),
+                int(c[1]),
+                int(c[0])
+            )
+    else:
+        template = "{:.4f} {:.4f} {:.4f}\n"
+        for p in points:
+            yield template.format(
+                scale*p[0],
+                scale*p[1],
+                scale*p[2]
+            )
+
+def tfCamToWorld(pos):
+    pos_w = [pos[2], -pos[0], -pos[1]]
+    # adjust world to whatever is happening in other transform
+    return [-pos_w[1], pos_w[0], pos_w[2]]
+
 @jit(nopython=True)
 def clip(value, min, max):
     if value > min and value < max:
@@ -107,6 +151,12 @@ def main():
     db_connection = sqlite3.connect(args.sqlite3_db)
     db_cursor = db_connection.cursor()
     keyframes = db_cursor.execute("SELECT * FROM keyframes").fetchall()
+    landmarks = db_cursor.execute("SELECT pos_w FROM landmarks").fetchall()
+    landmarks = [tfCamToWorld(np.frombuffer(i[0], np.float64)) for i in landmarks]
+    dense_points_pos = db_cursor.execute("SELECT pos_w FROM dense_points").fetchall()
+    dense_points_pos = [tfCamToWorld(np.frombuffer(i[0], np.float64)) for i in dense_points_pos]
+    dense_points_color = db_cursor.execute("SELECT color FROM dense_points").fetchall()
+    dense_points_color = [np.frombuffer(i[0], np.uint8) for i in dense_points_color]
 
     frame_count = len(keyframes)
     frame_nr = 1
@@ -258,6 +308,35 @@ def main():
         if info[2][2][3] < min_z:
             min_z = info[2][2][3]
 
+    for point in landmarks:
+        if point[0] > max_x:
+            max_x = point[0]
+        if point[0] < min_x:
+            min_x = point[0]
+        if point[1] > max_y:
+            max_y = point[1]
+        if point[1] < min_y:
+            min_y = point[1]
+        if point[2] > max_z:
+            max_z = point[2]
+        if point[2] < min_z:
+            min_z = point[2]
+
+    for point in dense_points_pos:
+        if point[0] > max_x:
+            max_x = point[0]
+        if point[0] < min_x:
+            min_x = point[0]
+        if point[1] > max_y:
+            max_y = point[1]
+        if point[1] < min_y:
+            min_y = point[1]
+        if point[2] > max_z:
+            max_z = point[2]
+        if point[2] < min_z:
+            min_z = point[2]
+
+
     x_range = max_x - min_x
     y_range = max_y - min_y
     z_range = max_z - min_z
@@ -273,8 +352,31 @@ def main():
         info[2][1][3] *= scale_factor * 2
         info[2][2][3] *= scale_factor * 2
 
+    for point in landmarks:
+        point[0] -= max_x - x_range / 2
+        point[1] -= max_y - y_range / 2
+        point[2] -= max_z - z_range / 2
+
+        point[0] *= scale_factor * 2
+        point[1] *= scale_factor * 2
+        point[2] *= scale_factor * 2
+
+    for point in dense_points_pos:
+        point[0] -= max_x - x_range / 2
+        point[1] -= max_y - y_range / 2
+        point[2] -= max_z - z_range / 2
+
+        point[0] *= scale_factor * 2
+        point[1] *= scale_factor * 2
+        point[2] *= scale_factor * 2
+
+
+    point_cloud_to_ply(os.path.join(args.output_folder, "sparse.ply"), landmarks, list())
+    point_cloud_to_ply(os.path.join(args.output_folder, "dense.ply"), dense_points_pos, dense_points_color)
 
     json_data = dict()
+
+    json_data["ply_file_path"] = "dense.ply"
 
     json_data["fl_x"] = float(edge / 2)
     json_data["fl_y"] = float(edge / 2)
