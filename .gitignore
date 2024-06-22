@@ -3,6 +3,8 @@ devel/
 lib/
 dataset/
 vocab/
+socket_publisher/
+stella_vslam_examples/
 .idea/
 cmake-build-debug/
 cmake-build-release/

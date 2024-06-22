@@ -585,6 +585,11 @@ bool system::relocalize_by_pose_2d(const Mat44_t& cam_pose_wc, const Vec3_t& nor
     return status;
 }
 
+void system::set_progress(unsigned int current_frame, unsigned int total_frames) {
+    double progress = (float)current_frame / (float)total_frames;
+    map_publisher_->set_progress(progress);
+}
+
 void system::pause_tracker() {
     auto future_pause = tracker_->async_pause();
     future_pause.get();

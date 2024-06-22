@@ -73,5 +73,13 @@ unsigned int map_publisher::get_dense_points(std::vector<std::shared_ptr<data::d
     return map_db_->get_num_dense_points();
 }
 
+void map_publisher::set_progress(float progress) {
+    progress_ = progress;
+}
+
+float map_publisher::get_progress() {
+    return progress_;
+}
+
 } // namespace publish
 } // namespace stella_vslam

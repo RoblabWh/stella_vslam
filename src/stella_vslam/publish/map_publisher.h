@@ -72,6 +72,10 @@ public:
      */
     unsigned int get_dense_points(std::vector<std::shared_ptr<data::dense_point>>& all_dense_points);
 
+    void set_progress(float progress);
+
+    float get_progress();
+
 private:
     //! config
     std::shared_ptr<config> cfg_;
@@ -83,6 +87,7 @@ private:
     std::mutex mtx_cam_pose_;
     Mat44_t cam_pose_cw_ = Mat44_t::Identity();
     Mat44_t cam_pose_wc_ = Mat44_t::Identity();
+    float progress_;
 };
 
 } // namespace publish

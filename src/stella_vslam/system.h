@@ -153,6 +153,8 @@ public:
     data::frame create_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp, const cv::Mat& mask);
     std::shared_ptr<Mat44_t> feed_RGBD_frame(const cv::Mat& rgb_img, const cv::Mat& depthmap, const double timestamp, const cv::Mat& mask = cv::Mat{});
 
+    void set_progress(unsigned int current_frame, unsigned int total_frames);
+
     //-----------------------------------------
     // pose initializing/updating
 
