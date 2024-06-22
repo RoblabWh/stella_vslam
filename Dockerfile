@@ -248,9 +248,10 @@ RUN set -x && \
   rm -rf CMakeCache.txt CMakeFiles Makefile cmake_install.cmake example src && \
   chmod -R 777 ./*
 
-COPY socket_publisher /socket_publisher/
-WORKDIR /socket_publisher/
+WORKDIR /tmp
 RUN set -x && \
+  git clone -b argus https://github.com/RoblabWh/socket_publisher.git && \
+  cd socket_publisher && \
   git submodule update --init --recursive && \
   mkdir -p build && \
   cd build && \
@@ -263,9 +264,10 @@ RUN set -x && \
   cd /tmp && \
   rm -rf *
 
-COPY stella_vslam_examples /stella_vslam_examples/
-WORKDIR /stella_vslam_examples/
+WORKDIR /
 RUN set -x && \
+  git clone -b argus https://github.com/RoblabWh/stella_vslam_examples.git && \
+  cd stella_vslam_examples && \
   git submodule update --init --recursive && \
   mkdir -p build && \
   cd build && \
