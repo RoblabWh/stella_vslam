@@ -1,3 +1,4 @@
+
 #==============#
 # Camera Model #
 #==============#
@@ -52,6 +53,19 @@ LoopDetector:
   enabled: true
   reject_by_graph_distance: true
   min_distance_on_graph: 50
+
+#=============================#
+# KeyframeInserter Parameters #
+#=============================#
+
+KeyframeInserter:
+  max_interval: 0.333
+  min_interval: 0.1
+  max_distance: 1.0
+  lms_ratio_thr_almost_all_lms_are_tracked: 0.9
+  lms_ratio_thr_view_changed: 0.5
+  enough_lms_thr: 100
+  wait_for_local_bundle_adjustment: false
 
 #=========================#
 # PatchMatch Parameters #
