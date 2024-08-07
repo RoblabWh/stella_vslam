@@ -39,10 +39,6 @@ bool keyframe_io_opencv::save(const std::string& path,
             cv::imwrite(path_checked + std::string("depthvis") + std::to_string(keyfrm->id_) + '.' + format_, depthvis);
             cv::imwrite(path_checked + std::string("depth") + std::to_string(keyfrm->id_) + std::string(".tiff"), keyfrm->depth_);
         }
-        if (!keyfrm->mask_.empty())
-        {
-            cv::imwrite(path_checked + std::string("mask") + std::to_string(keyfrm->id_) + '.' + format_, keyfrm->mask_);
-        }
     }
 
     return true;
