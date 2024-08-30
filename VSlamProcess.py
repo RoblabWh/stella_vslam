@@ -79,8 +79,6 @@ class vslam_thread(threading.Thread):
 
         @self.sio.on('map_publish')
         def handle_message(sid, data):
-            msgSize = len(data)
-            print('map data:' + str(int(msgSize) / 1000), flush=True)
             if self.startTime == None:
                 self.startTime = datetime.datetime.now()
                 self.lastTime_update_push = datetime.datetime.now()

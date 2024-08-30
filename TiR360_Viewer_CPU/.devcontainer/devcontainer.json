@@ -1,0 +1,16 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
+{
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"mounts": [
+		{ "source": "build", "target": "/workspaces/InstaStitcherDirty/build", "type": "volume" }
+	],
+	"runArgs": [
+		"--gpus", "all",
+		"--ipc=host",
+		"--ulimit", "memlock=-1",
+		"--ulimit", "stack=67108864"
+	]
+}

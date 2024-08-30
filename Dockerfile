@@ -41,6 +41,10 @@ RUN set -x && \
     libyaml-cpp-dev \
     sqlite3 \
     libsqlite3-dev && \
+  : "Stitcher dependencies" && \
+  apt-get install -y -qq \
+    nlohmann-json3-dev \
+    pybind11-dev  && \
   : "python dependencies" && \
   apt-get install -y -qq \
     python3 \
@@ -111,7 +115,7 @@ RUN set -x && \
 ENV g2o_DIR=${CMAKE_INSTALL_PREFIX}/lib/cmake/g2o
 
 # OpenCV
-ARG OPENCV_VERSION=4.7.0
+ARG OPENCV_VERSION=4.5.4
 WORKDIR /tmp
 RUN set -x && \
   wget -q https://github.com/opencv/opencv/archive/${OPENCV_VERSION}.zip && \
@@ -277,6 +281,17 @@ RUN set -x && \
     -DUSE_STACK_TRACE_LOGGER=ON \
     .. && \
   make -j${NUM_THREADS}
+  
+WORKDIR /stella_vslam/
+RUN set -x && \
+    cd TiR360_Viewer_CPU && \
+    cmake -B build . && \
+    cmake --build build && \
+    cd build && \
+    mv ./insta360_stitcher.cpython-310-x86_64-linux-gnu.so ./insta360_stitcher.so && \
+    mv ./insta360_stitcher.so ../ && \
+    cd .. && \
+    mv ./insta360_stitcher.so ../
   
 #install python
 RUN apt update && \

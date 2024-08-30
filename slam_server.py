@@ -5,8 +5,10 @@ import socketio
 import eventlet
 import map_segment_pb2
 import base64
+import cv2
 from util import popen_and_call
 from VSlamProcess import vslam_thread
+from video_stitcher import VideoStitcher
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
 
 class SlamServer:
@@ -16,12 +18,15 @@ class SlamServer:
         self.address = address
         self.port = port
         self.slam_statuses = {}
+        self.stitcher_statuses = {}
         self.threads = []
         self.results = []
         self.updates_threads = []
 
     def setup_routes(self):
         self.app.add_url_rule('/slam', methods=['POST'], view_func=self.start_slam)
+        self.app.add_url_rule('/sticher', methods=['POST'], view_func=self.start_stitcher)
+        self.app.add_url_rule('/get_sticher_status', methods=['GET'], view_func=self.stitcher_status)
         self.app.add_url_rule('/get_slam_status', methods=['GET'], view_func=self.slam_status)
         self.app.add_url_rule('/remove_thread/<report_id>', methods=['GET'], view_func=self.remove_thread)
         self.app.add_url_rule('/get_slam_map', methods=['GET'], view_func=self.get_slam_maps)
@@ -97,6 +102,41 @@ class SlamServer:
         removed = True
 
         return jsonify({'removed': removed})
+
+    def start_stitcher(self):
+        data = request.get_json(force=True)
+        report_id = data['report_id']
+        stitcher_calibration = data['stitcher_calibration']
+        input_videos = data['input_videos']
+        output_video = data['output_video']
+        thread = VideoStitcher(report_id, stitcher_calibration, input_videos, output_video, self.stitcher_finished)
+        self.threads.append(thread)
+        thread.start()
+        self.stitcher_statuses[str(report_id)] = 'started'
+        return jsonify("true")
+
+    def stitcher_status(self, report_id):
+        thread_data = []
+        print(self.updates_threads, flush=True)
+        for thread in self.threads:
+            if (str(thread.report_id) in self.stitcher_statuses) and (
+                    self.stitcher_statuses[str(thread.report_id)] == 'started'):
+                done = False
+            if (str(thread.report_id) in self.slam_statuses) and (
+                    self.stitcher_statuses[str(thread.report_id)] == 'finished'):
+                done = True
+            if (thread.report_id in self.updates_threads):
+                self.updates_threads.remove(thread.report_id)
+                update = True
+            else:
+                update = False
+            thread_data.append({'report_id': thread.report_id, 'started': thread.report_id, 'progress': thread.progress,
+                                'update': update, 'done': done})
+        return jsonify(thread_data)
+
+    def stitcher_finished(self, report_id):
+        if (str(report_id) in self.stitcher_statuses) and (self.stitcher_statuses[str(report_id)] == 'started'):
+            self.stitcher_statuses[str(report_id)] = 'finished'
 
     def run(self):
         self.app.run(host=self.address, port=self.port, debug=False, use_reloader=False)
