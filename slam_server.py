@@ -44,6 +44,7 @@ class SlamServer:
         keyfrm_path = data['keyfrm_path']
         landmark_path = data['landmark_path']
         keyfrm_folder_path = data['keyfrm_folder_path']
+        map_db_output = data['map_db_output']
         slam_output_path = data['slam_output_path']
         args = '/stella_vslam_examples/build/run_video_slam -m ' + str(video) + ' -v ' + str(orb_vocab) + ' -c ' + str(config)
         if(mask is not None):
@@ -52,7 +53,7 @@ class SlamServer:
             args = args + ' --frame-skip ' + str(slam_options['frame_skip'])
         if slam_options['no_sleep'] :
             args = args + ' --no-sleep '
-        args = args +  ' --auto-term -k ' + str(keyfrm_folder_path)
+        args = args +  ' --auto-term -k ' + str(keyfrm_folder_path) + ' -o ' + str(map_db_output)
         print(args.split(), flush=True)
         process = vslam_thread(report_id, keyfrm_path, landmark_path, slam_output_path, update_interval, self.updateCallback) #update interval in seconds
         self.threads.append(process)
