@@ -25,8 +25,8 @@ class SlamServer:
 
     def setup_routes(self):
         self.app.add_url_rule('/slam', methods=['POST'], view_func=self.start_slam)
-        self.app.add_url_rule('/sticher', methods=['POST'], view_func=self.start_stitcher)
-        self.app.add_url_rule('/get_sticher_status', methods=['GET'], view_func=self.stitcher_status)
+        self.app.add_url_rule('/stitcher', methods=['POST'], view_func=self.start_stitcher)
+        self.app.add_url_rule('/get_stitcher_status', methods=['GET'], view_func=self.stitcher_status)
         self.app.add_url_rule('/get_slam_status', methods=['GET'], view_func=self.slam_status)
         self.app.add_url_rule('/remove_thread/<report_id>', methods=['GET'], view_func=self.remove_thread)
         self.app.add_url_rule('/get_slam_map', methods=['GET'], view_func=self.get_slam_maps)
@@ -105,25 +105,28 @@ class SlamServer:
         return jsonify({'removed': removed})
 
     def start_stitcher(self):
+        print('start_stitcher', flush=True)
         data = request.get_json(force=True)
         report_id = data['report_id']
         stitcher_calibration = data['stitcher_calibration']
         input_videos = data['input_videos']
         output_video = data['output_video']
+        print(stitcher_calibration, input_videos, output_video, flush=True)
         thread = VideoStitcher(report_id, stitcher_calibration, input_videos, output_video, self.stitcher_finished)
         self.threads.append(thread)
         thread.start()
         self.stitcher_statuses[str(report_id)] = 'started'
         return jsonify("true")
 
-    def stitcher_status(self, report_id):
+    def stitcher_status(self):
+        print(self.stitcher_statuses, flush=True)
         thread_data = []
         print(self.updates_threads, flush=True)
         for thread in self.threads:
             if (str(thread.report_id) in self.stitcher_statuses) and (
                     self.stitcher_statuses[str(thread.report_id)] == 'started'):
                 done = False
-            if (str(thread.report_id) in self.slam_statuses) and (
+            if (str(thread.report_id) in self.stitcher_statuses) and (
                     self.stitcher_statuses[str(thread.report_id)] == 'finished'):
                 done = True
             if (thread.report_id in self.updates_threads):

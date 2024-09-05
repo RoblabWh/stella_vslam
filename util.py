@@ -1,6 +1,5 @@
 import threading
 import subprocess
-import os
 
 def popen_and_call(on_exit, report_id, popen_args):
     """

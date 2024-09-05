@@ -8,12 +8,9 @@ import pyarrow
 import numpy
 import datetime
 import json
-import os
-import subprocess
 from keyframes import Keyframes
 from landmarks import Landmarks
 from transmission import Transmission
-from util import popen_and_call
 from setinterval import setInterval
 
 class vslam_thread(threading.Thread):
