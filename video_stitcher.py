@@ -9,6 +9,10 @@ from math import pi
 import os
 import threading
 
+#a class to stitch to videos together
+# input videos: an array containing both videos, first one is the front view, second one is the back view
+# output video: path of the output video, only avi is supported so far
+# callback: a method being called after the stitching is completed
 class VideoStitcher(threading.Thread):
     def __init__(self, report_id, stitcher_calibration, input_videos, output_video, callback):
         self.report_id = report_id
@@ -17,12 +21,10 @@ class VideoStitcher(threading.Thread):
         self.input_videos = input_videos
         self.output_video = output_video
         self.stitcher_calibration = stitcher_calibration
-        print(os.path.exists(self.stitcher_calibration), flush=True)
         self.stitcher = insta360_stitcher.Insta360Stitcher(self.stitcher_calibration,2880)
         super().__init__()
 
     def run(self):
-        print("started video stitcher", self.report_id, flush=True)
         video1 = cv2.VideoCapture(self.input_videos[0])
         video2 = cv2.VideoCapture(self.input_videos[1])
         property_id = int(cv2.CAP_PROP_FRAME_COUNT)

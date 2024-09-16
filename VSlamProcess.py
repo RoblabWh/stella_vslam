@@ -13,8 +13,12 @@ from landmarks import Landmarks
 from transmission import Transmission
 from setinterval import setInterval
 
+#process that communicates with stellavslam
 class vslam_thread(threading.Thread):
 
+    #decodes the messages send via socketviewer from protobuf
+    #saves keyframes in a keyframe structure
+    #saves landmarks in a landmark structure
     def decodeMessage(self, data):
         map = map_segment_pb2.map()
         map.ParseFromString(base64.b64decode(data))
@@ -35,8 +39,8 @@ class vslam_thread(threading.Thread):
         for landmark in map.landmarks:
             landmarkObj = {}
             landmarkObj["id"] = landmark.id
-            # if the landmark has coordinates, we create a new landmark that will either get added or update a current
-            # entry in self.landmarks
+            #if the landmark has coordinates, we create a new landmark that will either get added or update a current
+            #entry in self.landmarks
             if (len(landmark.coords) != 0):
                 landmarkObj["point_pos"] = []
                 for coord in landmark.coords:
@@ -51,6 +55,9 @@ class vslam_thread(threading.Thread):
         if (self.interval is None):
             self.interval = setInterval(self.push_update_interval, self.saveResults)
 
+    #initializes the vslam thread
+    #push update interval: frequency how often the interval_callback is being called
+    #interval_callback: callback being called, depending on push update interval
     def __init__(self, report_id, keyfrm_path, landmark_path, slam_output_path, push_update_interval, interval_callback):
         self.report_id = report_id
         self.sio = socketio.Server()
@@ -81,13 +88,8 @@ class vslam_thread(threading.Thread):
                 self.lastTime_update_push = datetime.datetime.now()
             self.currentTime = datetime.datetime.now()
             self.transmission.receive(data)
-            
-        @self.sio.on('frame_publish')
-        def handle_message(sid, data):
-            msgSize = len(data)
-            print('img data:' + str(int(msgSize)/1000), flush=True)
 
-
+        #disconnect event considers vslam as being finished
         @self.sio.event
         def disconnect(sid):
             print('disconnect ', sid)
@@ -98,9 +100,7 @@ class vslam_thread(threading.Thread):
             self.done = True
         super().__init__()
 
-    def testMethodForTimer(self):
-        print('testing', flush=True)
-
+    #saves keyframes and landmarks as json files in the project
     def saveResults(self):
         with open(self.keyfrm_path, "w") as json_keyfrm_file:
             json.dump(self.keyframes.getAllKeyframes(), json_keyfrm_file, ensure_ascii=False, indent=4)
@@ -108,6 +108,7 @@ class vslam_thread(threading.Thread):
             json.dump(self.landmarks.getAllLandmarks(), json_landmark_file, ensure_ascii=False, indent=4)
         self.interval_callback(self.report_id)
 
+    #saves vslam runtime in a json file
     def saveSlamResults(self):
         print("finished vslam in", self.stopTime - self.startTime, flush=True)
         calc_time = self.stopTime - self.startTime
@@ -115,5 +116,6 @@ class vslam_thread(threading.Thread):
         with open(self.slam_output_path, "w") as json_slam_file:
             json.dump(slam_output, json_slam_file, ensure_ascii=False, indent=4)
 
+    #opens socket to communicate with stellavslam
     def run(self):
         eventlet.wsgi.server(eventlet.listen(('', 3000)), self.app)

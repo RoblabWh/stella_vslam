@@ -11,6 +11,7 @@ from VSlamProcess import vslam_thread
 from video_stitcher import VideoStitcher
 from flask import Flask, flash, request, redirect, url_for, render_template, jsonify
 
+#slam flask server, communicates with slam_manager in argus
 class SlamServer:
     def __init__(self, address, port):
         self.app = Flask(__name__)
@@ -23,14 +24,19 @@ class SlamServer:
         self.results = []
         self.updates_threads = []
 
+    #sets up different routes for starting and logging status of slam and stitcher threads
+    #also can remove threads that are already finished
     def setup_routes(self):
         self.app.add_url_rule('/slam', methods=['POST'], view_func=self.start_slam)
+        self.app.add_url_rule('/get_slam_status', methods=['GET'], view_func=self.slam_status)
         self.app.add_url_rule('/stitcher', methods=['POST'], view_func=self.start_stitcher)
         self.app.add_url_rule('/get_stitcher_status', methods=['GET'], view_func=self.stitcher_status)
-        self.app.add_url_rule('/get_slam_status', methods=['GET'], view_func=self.slam_status)
         self.app.add_url_rule('/remove_thread/<report_id>', methods=['GET'], view_func=self.remove_thread)
         self.app.add_url_rule('/get_slam_map', methods=['GET'], view_func=self.get_slam_maps)
 
+    #starts slam by opening a subprocess with popen_and_call from util.py
+    #processes the data being send from slam manager to adjust the parameters for the start slam
+    #also starts a vslamprocess before, so that slam has something to connect and send messages to
     def start_slam(self):
         data = request.get_json(force=True)
         report_id = data['report_id']
@@ -62,6 +68,7 @@ class SlamServer:
         result = popen_and_call(on_exit=self.slam_finished, report_id=report_id, popen_args=args.split())  # add output for map db and stuff
         return jsonify({'slam': 'started'})
 
+    #callback that sets the status of the slam thread to finished
     def slam_finished(self, report_id):
         if (str(report_id) in self.slam_statuses) and (self.slam_statuses[str(report_id)] == 'started'):
             self.slam_statuses[str(report_id)] = 'finished'
@@ -72,6 +79,7 @@ class SlamServer:
     def updateCallback(self, report_id):
         self.updates_threads.append(report_id)
 
+    #collects all thread data
     def slam_status(self):
         thread_data = []
         print(self.updates_threads, flush=True)
@@ -91,6 +99,7 @@ class SlamServer:
     def get_slam_maps(self):
         return jsonify(self.results)
 
+    #removes thread by report id
     def remove_thread(self, report_id):
         removed = False
         for i, thread in enumerate(self.threads):
@@ -104,6 +113,7 @@ class SlamServer:
 
         return jsonify({'removed': removed})
 
+    #starts the stitcher
     def start_stitcher(self):
         print('start_stitcher', flush=True)
         data = request.get_json(force=True)
@@ -111,17 +121,15 @@ class SlamServer:
         stitcher_calibration = data['stitcher_calibration']
         input_videos = data['input_videos']
         output_video = data['output_video']
-        print(stitcher_calibration, input_videos, output_video, flush=True)
         thread = VideoStitcher(report_id, stitcher_calibration, input_videos, output_video, self.stitcher_finished)
         self.threads.append(thread)
         thread.start()
         self.stitcher_statuses[str(report_id)] = 'started'
         return jsonify("true")
 
+    #returns all thread data
     def stitcher_status(self):
-        print(self.stitcher_statuses, flush=True)
         thread_data = []
-        print(self.updates_threads, flush=True)
         for thread in self.threads:
             if (str(thread.report_id) in self.stitcher_statuses) and (
                     self.stitcher_statuses[str(thread.report_id)] == 'started'):
@@ -138,9 +146,11 @@ class SlamServer:
                                 'update': update, 'done': done})
         return jsonify(thread_data)
 
+    #callback to set stitcher thread status to finished
     def stitcher_finished(self, report_id):
         if (str(report_id) in self.stitcher_statuses) and (self.stitcher_statuses[str(report_id)] == 'started'):
             self.stitcher_statuses[str(report_id)] = 'finished'
 
+    #runs flash app
     def run(self):
         self.app.run(host=self.address, port=self.port, debug=False, use_reloader=False)
