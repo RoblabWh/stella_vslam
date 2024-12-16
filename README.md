@@ -83,7 +83,7 @@ Run VSLAM and export script in container
 ```
 ./run_video_slam -v /data/orb_vocab.fbow -c /stella_vslam/example/nerf/nerf.yaml -m /data/example_inspection_flight_drz.mp4 --frame-skip 10 -o /data/example_inspection_flight_drz_nerf.db --no-sleep --auto-term --viewer none
 
-/stella_vslam/scripts/export_sqlite3_to_nerf.py /data/example_inspection_flight_drz_nerf.db /data/example_inspection_flight_drz_nerf/
+/stella_vslam/scripts/export_sqlite3_to_nerfstudio.py /data/example_inspection_flight_drz_nerf.db /data/example_inspection_flight_drz_nerf/
 ```
 
 Run nerfstudio on the host or in another container
@@ -91,7 +91,7 @@ Run nerfstudio on the host or in another container
 ## Additional export scripts
 Exporting the project from sqlite3 for use with [nerfstudio](https://docs.nerf.studio/)
 ```
-/stella_vslam/scripts/export_sqlite3_to_nerf.py ${PATH_TO_DB:?} ${PATH_TO_OUTPUT:?}
+/stella_vslam/scripts/export_sqlite3_to_nerfstudio.py ${PATH_TO_DB:?} ${PATH_TO_OUTPUT:?}
 ```
 Exporting the project from msgpack for use with [nerfstudio](https://docs.nerf.studio/)
 ```
